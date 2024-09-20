@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 // src/components/Block.js
 import sha256 from 'crypto-js/sha256';
-
 function Block({ block, index, updateBlock, rehashBlock, blocks }) {
   const previousBlock = index === 0 ? null : blocks[index - 1];
 
@@ -25,7 +24,7 @@ function Block({ block, index, updateBlock, rehashBlock, blocks }) {
           type="text"
           value={block.data}
           onChange={(e) => updateBlock(index, e.target.value)}
-          className="p-2 border rounded w-full"
+          className="p-2 border rounded w-1/2"
         />
       </div>
       <p className="mt-2"><strong>Previous Hash:</strong> {block.previousHash}</p>

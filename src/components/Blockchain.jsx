@@ -27,16 +27,18 @@ function Blockchain({ blocks, addBlock, updateBlock, rehashBlock }) {
         </button>
       </div>
 
-      {blocks.map((block, index) => (
-        <Block
-          key={index}
-          block={block}
-          updateBlock={updateBlock}
-          rehashBlock={rehashBlock}
-          index={index}
-          blocks={blocks}
-        />
-      ))}
+      <div className='flex overflow-x-auto whitespace-nowrap  space-x-2'>
+        {blocks.map((block, index) => (
+          <Block
+            key={index}
+            block={block}
+            updateBlock={updateBlock}
+            rehashBlock={rehashBlock}
+            index={index}
+            blocks={blocks}
+          />
+        ))}
+      </div>
     </div>
   );
 }

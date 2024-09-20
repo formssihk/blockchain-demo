@@ -46,18 +46,22 @@ function App() {
   }
 
   function rehashBlock(index) {
-    const updatedBlocks = blocks.map((block, i) => {
-      if (i === index) {
-        const previousHash = i === 0 ? "0" : blocks[i - 1].hash;
-        return {
-          ...block,
-          hash: calculateHash(block.index, block.data, previousHash),
-        };
-      }
-      return block;
-    });
-    setBlocks(updatedBlocks);
+    const updatedBlocks = [...blocks];
+
+    // Find the previous block's hash
+    const previousHash = index === 0 ? "0" : updatedBlocks[index - 1].hash;
+
+    // Update the current block with the new previousHash and recalculate its hash
+    const updatedBlock = {
+      ...updatedBlocks[index],
+      previousHash: previousHash, // Set previousHash to the hash of the previous block
+      hash: calculateHash(updatedBlocks[index].index, updatedBlocks[index].data, previousHash), // Recalculate hash
+    };
+
+    updatedBlocks[index] = updatedBlock;
+    setBlocks(updatedBlocks); // Update the state with the rehashed block
   }
+  
 
   return (
     <div className="container mx-auto p-4">
