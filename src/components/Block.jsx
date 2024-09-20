@@ -17,7 +17,7 @@ function Block({ block, index, updateBlock, rehashBlock, blocks, showTick }) {
   const isValid = isPreviousHashValid && isCurrentHashValid;
 
   return (
-    <div className={`block p-4 border rounded shadow mb-4 relative ${isValid ? 'bg-green-100' : 'bg-red-100'}`}>
+    <div className={`w-1/2 block p-4 border rounded shadow mb-4 relative ${isValid ? 'bg-green-100' : 'bg-red-100'}`}>
       {/* Show tick icon if the block was added */}
       {showTick && (
         <div className="absolute top-2 right-2">
