@@ -13,6 +13,7 @@ function App() {
   ]);
 
   const [newBlockData, setNewBlockData] = useState('');
+  const [ticks, setTicks] = useState([false, false, false, false]); // Track tick icon for each node
 
   function createGenesisBlock() {
     return {
@@ -33,19 +34,38 @@ function App() {
       return;
     }
 
-    const updatedNodes = nodes.map((blocks) => {
-      const previousBlock = blocks[blocks.length - 1];
-      const newBlock = {
-        index: blocks.length,
-        data: newBlockData,
-        previousHash: previousBlock.hash,
-        hash: calculateHash(blocks.length, newBlockData, previousBlock.hash),
-      };
-      return [...blocks, newBlock];
-    });
+    // Create the new block to be added
+    const newBlock = {
+      index: nodes[0].length,
+      data: newBlockData,
+      previousHash: nodes[0][nodes[0].length - 1].hash,
+      hash: calculateHash(nodes[0].length, newBlockData, nodes[0][nodes[0].length - 1].hash),
+    };
 
+    // Add the block to the first node immediately
+    const updatedNodes = [...nodes];
+    updatedNodes[0] = [...updatedNodes[0], newBlock];
     setNodes(updatedNodes);
-    setNewBlockData(''); 
+
+    // Show the tick icon for the first node immediately
+    setTicks([true, false, false, false]);
+
+    // After 1 second, propagate the block to the other nodes
+    setTimeout(() => {
+      propagateBlockToOtherNodes(newBlock);
+    }, 1000);
+
+    setNewBlockData(''); // Clear input field
+  }
+
+  function propagateBlockToOtherNodes(newBlock) {
+    const updatedNodes = nodes.map((blocks) => {
+      return [...blocks, newBlock]; // Add block to all nodes including the first
+    });
+    setNodes(updatedNodes);
+
+    // Show tick icon on all nodes after propagation
+    setTicks([true, true, true, true]);
   }
 
   function updateBlock(nodeIndex, blockIndex, newData) {
@@ -56,7 +76,7 @@ function App() {
             return {
               ...block,
               data: newData,
-              hash: block.hash, 
+              hash: block.hash, // Keep the old hash to simulate tampering
             };
           }
           return block;
@@ -85,40 +105,6 @@ function App() {
     setNodes(updatedNodes);
   }
 
-  function resyncInvalidatedNodes() {
-    const majorityNode = findMajorityNode();
-    const updatedNodes = nodes.map((blocks, i) => {
-      if (!isChainValid(blocks)) {
-        return majorityNode;
-      }
-      return blocks;
-    });
-    setNodes(updatedNodes);
-  }
-
-  function findMajorityNode() {
-    const validNodes = nodes.filter(isChainValid);
-    return validNodes[0];
-  }
-
-  function isChainValid(blocks) {
-    for (let i = 1; i < blocks.length; i++) {
-      const currentBlock = blocks[i];
-      const previousBlock = blocks[i - 1];
-
-      if (currentBlock.previousHash !== previousBlock.hash) {
-        return false;
-      }
-
-      const calculatedHash = calculateHash(currentBlock.index, currentBlock.data, currentBlock.previousHash);
-      if (currentBlock.hash !== calculatedHash) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  // Function to reset the blockchain to the initial state
   function resetBlockchain() {
     setNodes([
       [createGenesisBlock()],
@@ -126,7 +112,8 @@ function App() {
       [createGenesisBlock()],
       [createGenesisBlock()],
     ]);
-    setNewBlockData(''); // Clear the input field as well
+    setNewBlockData(''); // Clear the input field
+    setTicks([false, false, false, false]); // Reset the tick icons
   }
 
   return (
@@ -148,27 +135,20 @@ function App() {
       </button>
 
       <button
-        onClick={resyncInvalidatedNodes}
-        className="p-2 bg-green-500 text-white rounded mb-4 ml-4"
-      >
-        Resync Invalidated Nodes
-      </button>
-
-      {/* New Reset Button */}
-      <button
         onClick={resetBlockchain}
-        className="p-2 bg-red-500 text-white rounded mb-4 ml-4"
+        className="p-2 bg-orange-500 text-white rounded mb-4 ml-4"
       >
         Restart Blockchain
       </button>
 
-      <div className="">
+      <div className="overflow-x-auto p-2">
         {nodes.map((blocks, nodeIndex) => (
           <Blockchain
             key={nodeIndex}
             blocks={blocks}
             updateBlock={(blockIndex, newData) => updateBlock(nodeIndex, blockIndex, newData)}
             rehashBlock={(blockIndex) => rehashBlock(nodeIndex, blockIndex)}
+            showTick={ticks[nodeIndex]} // Pass the tick status to Blockchain component
             nodeIndex={nodeIndex}
           />
         ))}

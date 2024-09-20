@@ -2,7 +2,7 @@
 // src/components/Block.jsx
 import sha256 from 'crypto-js/sha256';
 
-function Block({ block, index, updateBlock, rehashBlock, blocks }) {
+function Block({ block, index, updateBlock, rehashBlock, blocks, showTick }) {
   const previousBlock = index === 0 ? null : blocks[index - 1];
 
   // Check if the block's previous hash matches the hash of the previous block
@@ -16,14 +16,14 @@ function Block({ block, index, updateBlock, rehashBlock, blocks }) {
   // Determine if the block is valid
   const isValid = isPreviousHashValid && isCurrentHashValid;
 
-  // If this block is invalid, or any previous block is invalid, then all blocks after are invalid
-  const isInvalidOrFollowingInvalid = !isValid || (previousBlock && previousBlock.invalid);
-
-  // Mark the current block as invalid if the chain up to this point is invalid
-  block.invalid = isInvalidOrFollowingInvalid;
-
   return (
-    <div className={`block p-4 border rounded shadow mb-4 ${isInvalidOrFollowingInvalid ? 'bg-red-100' : 'bg-green-100'}`}>
+    <div className={`block p-4 border rounded shadow mb-4 relative ${isValid ? 'bg-green-100' : 'bg-red-100'}`}>
+      {/* Show tick icon if the block was added */}
+      {showTick && (
+        <div className="absolute top-2 right-2">
+          <span className="text-green-500">&#10004;</span> {/* Tick Icon */}
+        </div>
+      )}
       <p className="text-lg font-bold">Block {block.index}</p>
       <div className="mt-2">
         <label className="font-semibold">Data: </label>
