@@ -1,45 +1,24 @@
-// src/components/Blockchain.js
-import  { useState } from 'react';
+/* eslint-disable react/prop-types */
+// src/components/Blockchain.jsx
 import Block from './Block';
 
-// eslint-disable-next-line react/prop-types
-function Blockchain({ blocks, addBlock, updateBlock, rehashBlock }) {
-  const [newBlockData, setNewBlockData] = useState('');
-
+function Blockchain({ blocks, updateBlock, rehashBlock, nodeIndex }) {
   return (
-    <div className="blockchain">
-      <div className="mb-4">
-        <input
-          type="text"
-          value={newBlockData}
-          onChange={(e) => setNewBlockData(e.target.value)}
-          className="p-2 border rounded w-64"
-          placeholder="Enter data for new block"
-        />
-        <button
-          onClick={() => {
-            addBlock(newBlockData);
-            setNewBlockData('');
-          }}
-          className="ml-2 p-2 bg-blue-500 text-white rounded"
-        >
-          Add Block
-        </button>
-      </div>
-
-      <div className='flex overflow-x-auto whitespace-nowrap  space-x-2'>
+    <>
+      <h2 className="font-bold">Node {nodeIndex + 1}</h2>
+      <div className="flex overflow-x-auto p-2 space-x-4 border p-4">
         {blocks.map((block, index) => (
           <Block
             key={index}
             block={block}
+            index={index}
             updateBlock={updateBlock}
             rehashBlock={rehashBlock}
-            index={index}
             blocks={blocks}
           />
         ))}
       </div>
-    </div>
+    </>
   );
 }
 

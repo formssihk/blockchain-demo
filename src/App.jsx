@@ -1,11 +1,18 @@
-// src/App.js
+// src/App.jsx
 import { useState } from 'react';
 import Blockchain from './components/Blockchain';
 import sha256 from 'crypto-js/sha256';
 import './App.css';
 
 function App() {
-  const [blocks, setBlocks] = useState([createGenesisBlock()]);
+  const [nodes, setNodes] = useState([
+    [createGenesisBlock()],
+    [createGenesisBlock()],
+    [createGenesisBlock()],
+    [createGenesisBlock()],
+  ]);
+
+  const [newBlockData, setNewBlockData] = useState('');
 
   function createGenesisBlock() {
     return {
@@ -20,58 +27,152 @@ function App() {
     return sha256(index + data + previousHash).toString();
   }
 
-  function addBlock(data) {
-    const previousBlock = blocks[blocks.length - 1];
-    const newBlock = {
-      index: blocks.length,
-      data,
-      previousHash: previousBlock.hash,
-      hash: calculateHash(blocks.length, data, previousBlock.hash),
-    };
-    setBlocks([...blocks, newBlock]);
-  }
+  function addBlock() {
+    if (newBlockData.trim() === '') {
+      alert("Please enter data for the new block.");
+      return;
+    }
 
-  function updateBlock(index, newData) {
-    const updatedBlocks = blocks.map((block, i) => {
-      if (i === index) {
-        return {
-          ...block,
-          data: newData,
-          hash: block.hash, // Keep old hash to simulate tampering
-        };
-      }
-      return block;
+    const updatedNodes = nodes.map((blocks) => {
+      const previousBlock = blocks[blocks.length - 1];
+      const newBlock = {
+        index: blocks.length,
+        data: newBlockData,
+        previousHash: previousBlock.hash,
+        hash: calculateHash(blocks.length, newBlockData, previousBlock.hash),
+      };
+      return [...blocks, newBlock];
     });
-    setBlocks(updatedBlocks);
+
+    setNodes(updatedNodes);
+    setNewBlockData(''); 
   }
 
-  function rehashBlock(index) {
-    const updatedBlocks = [...blocks];
+  function updateBlock(nodeIndex, blockIndex, newData) {
+    const updatedNodes = nodes.map((blocks, i) => {
+      if (i === nodeIndex) {
+        const updatedBlocks = blocks.map((block, j) => {
+          if (j === blockIndex) {
+            return {
+              ...block,
+              data: newData,
+              hash: block.hash, 
+            };
+          }
+          return block;
+        });
+        return updatedBlocks;
+      }
+      return blocks;
+    });
+    setNodes(updatedNodes);
+  }
 
-    // Find the previous block's hash
-    const previousHash = index === 0 ? "0" : updatedBlocks[index - 1].hash;
+  function rehashBlock(nodeIndex, blockIndex) {
+    const updatedNodes = [...nodes];
+    const updatedBlocks = [...updatedNodes[nodeIndex]];
 
-    // Update the current block with the new previousHash and recalculate its hash
+    const previousHash = blockIndex === 0 ? "0" : updatedBlocks[blockIndex - 1].hash;
+
     const updatedBlock = {
-      ...updatedBlocks[index],
-      previousHash: previousHash, // Set previousHash to the hash of the previous block
-      hash: calculateHash(updatedBlocks[index].index, updatedBlocks[index].data, previousHash), // Recalculate hash
+      ...updatedBlocks[blockIndex],
+      previousHash: previousHash,
+      hash: calculateHash(updatedBlocks[blockIndex].index, updatedBlocks[blockIndex].data, previousHash),
     };
 
-    updatedBlocks[index] = updatedBlock;
-    setBlocks(updatedBlocks); // Update the state with the rehashed block
+    updatedBlocks[blockIndex] = updatedBlock;
+    updatedNodes[nodeIndex] = updatedBlocks;
+    setNodes(updatedNodes);
   }
-  
+
+  function resyncInvalidatedNodes() {
+    const majorityNode = findMajorityNode();
+    const updatedNodes = nodes.map((blocks, i) => {
+      if (!isChainValid(blocks)) {
+        return majorityNode;
+      }
+      return blocks;
+    });
+    setNodes(updatedNodes);
+  }
+
+  function findMajorityNode() {
+    const validNodes = nodes.filter(isChainValid);
+    return validNodes[0];
+  }
+
+  function isChainValid(blocks) {
+    for (let i = 1; i < blocks.length; i++) {
+      const currentBlock = blocks[i];
+      const previousBlock = blocks[i - 1];
+
+      if (currentBlock.previousHash !== previousBlock.hash) {
+        return false;
+      }
+
+      const calculatedHash = calculateHash(currentBlock.index, currentBlock.data, currentBlock.previousHash);
+      if (currentBlock.hash !== calculatedHash) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // Function to reset the blockchain to the initial state
+  function resetBlockchain() {
+    setNodes([
+      [createGenesisBlock()],
+      [createGenesisBlock()],
+      [createGenesisBlock()],
+      [createGenesisBlock()],
+    ]);
+    setNewBlockData(''); // Clear the input field as well
+  }
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold text-center mb-6">Blockchain Simulation</h1>
-      <Blockchain
-        blocks={blocks}
-        addBlock={addBlock}
-        updateBlock={updateBlock}
-        rehashBlock={rehashBlock}
+      <h1 className="text-xl font-bold mb-4">Blockchain Simulator (4 Nodes)</h1>
+      
+      <input
+        type="text"
+        value={newBlockData}
+        onChange={(e) => setNewBlockData(e.target.value)}
+        placeholder="Enter new block data"
+        className="p-2 border rounded mr-4"
       />
+      <button
+        onClick={addBlock}
+        className="p-2 bg-blue-500 text-white rounded mb-4"
+      >
+        Add Block
+      </button>
+
+      <button
+        onClick={resyncInvalidatedNodes}
+        className="p-2 bg-green-500 text-white rounded mb-4 ml-4"
+      >
+        Resync Invalidated Nodes
+      </button>
+
+      {/* New Reset Button */}
+      <button
+        onClick={resetBlockchain}
+        className="p-2 bg-red-500 text-white rounded mb-4 ml-4"
+      >
+        Restart Blockchain
+      </button>
+
+      <div className="">
+        {nodes.map((blocks, nodeIndex) => (
+          <Blockchain
+            key={nodeIndex}
+            blocks={blocks}
+            updateBlock={(blockIndex, newData) => updateBlock(nodeIndex, blockIndex, newData)}
+            rehashBlock={(blockIndex) => rehashBlock(nodeIndex, blockIndex)}
+            nodeIndex={nodeIndex}
+          />
+        ))}
+      </div>
     </div>
   );
 }
