@@ -126,7 +126,7 @@ function App() {
         value={newBlockData}
         onChange={(e) => setNewBlockData(e.target.value)}
         placeholder="Enter new block data"
-        className="p-2 border rounded mr-4"
+        className="p-2 border rounded mr-4 text-sm"
       />
       <button
         onClick={addBlock}
