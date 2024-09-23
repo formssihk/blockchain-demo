@@ -41,7 +41,7 @@ function Block({ block, index, updateBlock, rehashBlock, blocks, showTick }) {
           <span className="text-green-500">&#10004;</span> {/* Tick Icon */}
         </div>
       )}
-      <p className="text-lg font-bold">Block {block.index}</p>
+      <p className="text-lg font-bold">Block {block.index + 1}</p>
       <div className="mt-2">
         <label className="font-semibold">Data: </label>
         <input

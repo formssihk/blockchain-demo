@@ -16,11 +16,12 @@ function App() {
   const [ticks, setTicks] = useState([false, false, false, false]); // Track tick icon for each node
 
   function createGenesisBlock() {
+    const genBlk = "Genesis Block";
     return {
       index: 0,
-      data: "Genesis Block",
+      data: genBlk,
       previousHash: "0",
-      hash: calculateHash(0, "Genesis Block", "0"),
+      hash: calculateHash(0, genBlk, "0"),
     };
   }
 
