@@ -35,12 +35,14 @@ function Block({ block, index, updateBlock, rehashBlock, blocks, showTick }) {
 
   return (
     <div className={`w-1/3 block p-4 border rounded shadow mb-4 relative ${isSubsequentBlocksInvalid ? 'bg-red-100' : 'bg-green-100'}`}>
-      {/* Show tick icon if the block was added */}
-      {showTick && (
+      {!isSubsequentBlocksInvalid ? 
         <div className="absolute top-2 right-2">
-          <span className="text-green-500">&#10004;</span> {/* Tick Icon */}
-        </div>
-      )}
+          <span className="text-green-500">✓</span> 
+        </div> :
+        <div className="absolute top-2 right-2">
+        <span className="text-red-500">✗</span> 
+      </div> 
+      }
       <p className="text-lg font-bold">Block {block.index + 1}</p>
       <div className="mt-2">
         <label className="font-semibold">Data: </label>
@@ -54,7 +56,7 @@ function Block({ block, index, updateBlock, rehashBlock, blocks, showTick }) {
       <p className="text-sm mt-2 break-all"><strong>Previous Hash:</strong> {block.previousHash}</p>
       <p className="text-sm mt-2 break-all"><strong>Current Hash:</strong> {block.hash}</p>
       {/* {!isValid && <p className="text-red-500 mt-2">This block is invalid!</p>} */}
-      {isSubsequentBlocksInvalid && index > 0 && <p className="text-red-500 mt-2">This block is invalid!</p>}
+      {isSubsequentBlocksInvalid && index > 0 && <p className="text-red-500 mt-2">Block is invalid!</p>}
       <button
         onClick={() => rehashBlock(index)}
         className="mt-2 p-2 bg-green-500 text-white rounded"
