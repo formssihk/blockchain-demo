@@ -6,10 +6,10 @@ function Blockchain({ blocks, updateBlock, rehashBlock, nodeIndex, showTick }) {
   return (
     <>
       <div>
-        <h2 className="text-lg font-bold mt-2">Node {nodeIndex + 1}</h2>
+        <h2 className="text-lg font-bold mt-2">Node</h2>
       </div>
       <div className="blockchain p-4 border rounded flex overflow-x-auto p-2 space-x-4 border p-4">
-        {blocks.map((block, index) => (
+        {blocks && blocks.map((block, index) => (
           <Block
             key={index}
             block={block}
