@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import Blockchain from './components/Blockchain';
 import './App.css';
 import axios from 'axios';
+import sha256 from 'crypto-js/sha256';
 
 const BASE_URL = 'http://localhost:3000';
 
 function App() {
-  const [nodes, setNodes] = useState([]); // Each node is a blockchain (an array of blocks)
+  const [nodes, setNodes] = useState([]); // Each node is an object containing clientId and blocks
   const [newBlockData, setNewBlockData] = useState('');
   const [ticks, setTicks] = useState([]); // Ticks state dynamically adjusts based on number of nodes
 
@@ -14,7 +15,7 @@ function App() {
     const fetchBlockchain = async () => {
       try {
         const response = await axios.get(`${BASE_URL}/blocks`);
-        setNodes(response.data);
+        setNodes(response.data); // Set the nodes from the response (including clientId and blocks)
         setTicks(new Array(response.data.length).fill(false)); // Initialize ticks based on node count
       } catch (error) {
         console.error('Error fetching blockchain data:', error);
@@ -45,13 +46,12 @@ function App() {
     socket.onerror = (error) => {
       console.error('WebSocket error:', error);
     };
-  
 
     return () => {
-      if (socket.readyState === 1) { // <-- This is important
+      if (socket.readyState === 1) {
           socket.close();
       }
-  }
+    };
   }, []);
 
   const addBlock = async () => {
@@ -81,12 +81,28 @@ function App() {
     }
   };
 
-  const updateBlock = (blockData, index) => {
-    // Update block data logic (placeholder)
+  const updateBlock = (nodeIndex, blockIndex, data) => {
+    console.log("data blockchain", nodeIndex, blockIndex, data);
+
+    const updatedNodes = [...nodes];
+    const block = updatedNodes[nodeIndex].blocks[blockIndex];
+    const blockCurrHash = sha256(block.index + data + block.previousHash).toString();
+    const updatedBlock = { ...block, data, hash: blockCurrHash, isValid: false };
+    
+    // Update the block in the corresponding node
+    updatedNodes[nodeIndex].blocks[blockIndex] = updatedBlock;
+    setNodes(updatedNodes);
   };
 
-  const rehashBlock = (index) => {
-    // Rehash block logic (placeholder)
+  const rehashBlock = (nodeIndex, blockIndex) => {
+    const updatedNodes = [...nodes];
+    const block = updatedNodes[nodeIndex].blocks[blockIndex];
+    const blockCurrHash = sha256(block.index + block.data + block.previousHash).toString();
+    const updatedBlock = { ...block, hash: blockCurrHash };
+
+    // Update the block in the corresponding node
+    updatedNodes[nodeIndex].blocks[blockIndex] = updatedBlock;
+    setNodes(updatedNodes);
   };
 
   return (
@@ -105,12 +121,13 @@ function App() {
         Add Block
       </button>
       <div>
-        {nodes.map((blocks, nodeIndex) => (
+        {nodes.map((node, nodeIndex) => (
           <Blockchain
             key={nodeIndex}
-            blocks={blocks} // Pass the array of blocks for this node
-            updateBlock={updateBlock}
-            rehashBlock={rehashBlock}
+            clientId={node.clientId} // Pass the clientId to the Blockchain component
+            blocks={node.blocks} // Pass the array of blocks for this node
+            updateBlock={(blockIndex, data) => updateBlock(nodeIndex, blockIndex, data)}
+            rehashBlock={(blockIndex) => rehashBlock(nodeIndex, blockIndex)}
             nodeIndex={nodeIndex}
             showTick={ticks[nodeIndex]} // Pass the tick state for the current node
           />

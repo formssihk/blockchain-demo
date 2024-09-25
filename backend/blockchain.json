@@ -1,10 +1,102 @@
 [
-  [
-    {
-      "index": 0,
-      "data": "Genesis Block",
-      "previousHash": "0",
-      "hash": "d894de287307c6e646599a69ef054fe0bf9c157e46d2d396232d320dbe326b3d"
-    }
-  ]
+  {
+    "clientId": "1",
+    "blocks": [
+      {
+        "index": 0,
+        "data": "Genesis Block",
+        "previousHash": "0",
+        "hash": "d894de287307c6e646599a69ef054fe0bf9c157e46d2d396232d320dbe326b3d",
+        "isValid": true,
+        "addedBy": "system"
+      },
+      {
+        "index": 1,
+        "data": "123",
+        "previousHash": "d894de287307c6e646599a69ef054fe0bf9c157e46d2d396232d320dbe326b3d",
+        "hash": "f5c9a33ca0c79b7182536d1fec19546c118915c9fbd8d724f030f76050e4b24d",
+        "isValid": true
+      }
+    ]
+  },
+  {
+    "clientId": "2",
+    "blocks": [
+      {
+        "index": 0,
+        "data": "Genesis Block",
+        "previousHash": "0",
+        "hash": "d894de287307c6e646599a69ef054fe0bf9c157e46d2d396232d320dbe326b3d",
+        "isValid": true,
+        "addedBy": "system"
+      },
+      {
+        "index": 1,
+        "data": "123",
+        "previousHash": "d894de287307c6e646599a69ef054fe0bf9c157e46d2d396232d320dbe326b3d",
+        "hash": "f5c9a33ca0c79b7182536d1fec19546c118915c9fbd8d724f030f76050e4b24d",
+        "isValid": true
+      }
+    ]
+  },
+  {
+    "clientId": "3",
+    "blocks": [
+      {
+        "index": 0,
+        "data": "Genesis Block",
+        "previousHash": "0",
+        "hash": "d894de287307c6e646599a69ef054fe0bf9c157e46d2d396232d320dbe326b3d",
+        "isValid": true,
+        "addedBy": "system"
+      },
+      {
+        "index": 1,
+        "data": "123",
+        "previousHash": "d894de287307c6e646599a69ef054fe0bf9c157e46d2d396232d320dbe326b3d",
+        "hash": "f5c9a33ca0c79b7182536d1fec19546c118915c9fbd8d724f030f76050e4b24d",
+        "isValid": true
+      }
+    ]
+  },
+  {
+    "clientId": "4",
+    "blocks": [
+      {
+        "index": 0,
+        "data": "Genesis Block",
+        "previousHash": "0",
+        "hash": "d894de287307c6e646599a69ef054fe0bf9c157e46d2d396232d320dbe326b3d",
+        "isValid": true,
+        "addedBy": "system"
+      },
+      {
+        "index": 1,
+        "data": "123",
+        "previousHash": "d894de287307c6e646599a69ef054fe0bf9c157e46d2d396232d320dbe326b3d",
+        "hash": "f5c9a33ca0c79b7182536d1fec19546c118915c9fbd8d724f030f76050e4b24d",
+        "isValid": true
+      }
+    ]
+  },
+  {
+    "clientId": "5",
+    "blocks": [
+      {
+        "index": 0,
+        "data": "Genesis Block",
+        "previousHash": "0",
+        "hash": "d894de287307c6e646599a69ef054fe0bf9c157e46d2d396232d320dbe326b3d",
+        "isValid": true,
+        "addedBy": "system"
+      },
+      {
+        "index": 1,
+        "data": "123",
+        "previousHash": "d894de287307c6e646599a69ef054fe0bf9c157e46d2d396232d320dbe326b3d",
+        "hash": "f5c9a33ca0c79b7182536d1fec19546c118915c9fbd8d724f030f76050e4b24d",
+        "isValid": true
+      }
+    ]
+  }
 ]
