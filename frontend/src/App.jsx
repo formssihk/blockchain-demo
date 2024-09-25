@@ -12,6 +12,7 @@ function App() {
   const [ticks, setTicks] = useState([]); // Ticks state dynamically adjusts based on number of nodes
 
   useEffect(() => {
+    // Fetch blockchain data
     const fetchBlockchain = async () => {
       try {
         const response = await axios.get(`${BASE_URL}/blocks`);
@@ -21,16 +22,16 @@ function App() {
         console.error('Error fetching blockchain data:', error);
       }
     };
-
+  
     fetchBlockchain();
-
+  
     // WebSocket connection for real-time updates
     const socket = new WebSocket(`ws://localhost:3000`);
-
+  
     socket.onopen = () => {
       console.log('WebSocket connection opened');
     };
-
+  
     socket.onmessage = (message) => {
       const data = JSON.parse(message.data);
       if (data.type === 'update') {
@@ -38,7 +39,7 @@ function App() {
         setTicks(new Array(data.blockchain.length).fill(false)); // Reset ticks when blockchain updates
       }
     };
-
+  
     socket.onclose = () => {
       console.log('WebSocket connection closed');
     };
@@ -46,13 +47,16 @@ function App() {
     socket.onerror = (error) => {
       console.error('WebSocket error:', error);
     };
-
+  
+    // Cleanup WebSocket connection when component unmounts
     return () => {
-      if (socket.readyState === 1) {
-          socket.close();
+      if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+        console.log('Closing WebSocket connection');
+        socket.close();
       }
     };
-  }, []);
+  }, []); // Empty array ensures this effect runs only once, on mount
+  
 
   const addBlock = async () => {
     if (newBlockData.trim() === '') {

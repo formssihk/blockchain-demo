@@ -24,6 +24,7 @@ const loadBlockchain = () => {
       {
         clientId: "1",
         blocks: [createGenesisBlock()],
+        // blocks: [],
       },
     ];
     saveBlockchain();
