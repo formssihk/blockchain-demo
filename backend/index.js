@@ -4,6 +4,7 @@ const fs = require('fs');
 const WebSocket = require('ws');
 const http = require('http');
 const cors = require('cors');
+const path = require('path');
 const app = express();
 const port = 3000;
 
@@ -21,7 +22,7 @@ const loadBlockchain = () => {
     blockchainData = JSON.parse(data);
   } else {
     blockchainData = [];
-    saveBlockchain();
+    // saveBlockchain();
   }
 };
 
@@ -62,7 +63,6 @@ const findNodeByClientId = (clientId) => {
   return data;
 };
 
-// API to fetch all blockchain data
 app.get('/blocks', (req, res) => {
   // loadBlockchain();
   res.json(blockchainData);
@@ -97,24 +97,66 @@ app.post('/blocks', (req, res) => {
     hash: calculateHash(previousBlock.index + 1, newBlockData, previousBlock.hash),
     isValid: true,
     addedBy: clientId,
-    isConfirmed: false,
+    isConfirmed: false, // This block isn't confirmed yet
   };
 
-  // Add the new block to all nodes, but deep copy the block to ensure no reference sharing
+  // Add the new block to the current node but mark it as not yet confirmed by consensus
+  node.blocks.push({ ...newBlock });
+
+  // Save the new block (not finalized yet) to the blockchain of the current client node
+  saveBlockchain();
+
+  // Respond with the newly added block (before consensus)
+  res.json({ message: "Block added to client node, waiting for consensus", block: newBlock });
+
+  // Check for consensus across all nodes
+  checkForConsensus(newBlock);
+});
+
+// Function to check consensus
+const checkForConsensus = (blockToCheck) => {
+  let confirmedCount = 0;
+  const totalNodes = blockchainData.length;
+
+  // Loop through all nodes and count confirmations for this block's index
   blockchainData.forEach(node => {
-    const copiedBlock = { ...newBlock }; // Create a shallow copy of the new block
-    node.blocks.push(copiedBlock); // Each node gets its own independent copy
+    const block = node.blocks.find(b => b.index === blockToCheck.index);
+    if (block && block.isConfirmed) {
+      confirmedCount++;
+    }
   });
 
-  // Save the updated blockchain to the file
+  // Calculate percentage of nodes that have confirmed the block
+  const consensusPercentage = (confirmedCount / totalNodes) * 100;
+
+  console.log(`Consensus percentage: ${consensusPercentage}%`);
+
+  // If more than 67% of nodes have confirmed, finalize the block
+  if (consensusPercentage > 67) {
+    finalizeBlock(blockToCheck);
+  } else {
+    console.log(`Not enough confirmations yet. ${confirmedCount}/${totalNodes} nodes have confirmed.`);
+  }
+};
+
+// Function to finalize the block after consensus is reached
+const finalizeBlock = (blockToFinalize) => {
+  blockchainData.forEach(node => {
+    const block = node.blocks.find(b => b.index === blockToFinalize.index);
+    if (block) {
+      block.isConfirmed = true; // Mark the block as confirmed
+    }
+  });
+
+  // Save the blockchain with the finalized block
   saveBlockchain();
 
   // Broadcast the updated blockchain to all clients
   broadcastBlockchain();
 
-  // Respond with the newly added block
-  res.json(newBlock);
-});
+  console.log(`Block at index ${blockToFinalize.index} has been confirmed by consensus and finalized.`);
+};
+
 
 
 
@@ -196,27 +238,31 @@ const wss = new WebSocket.Server({ server });
 wss.on('connection', (ws) => {
   console.log('New WebSocket connection');
 
+  // Store the clientId for the current WebSocket connection
+  let clientId = null;
+
   ws.on('message', (message) => {
     const data = JSON.parse(message);
     console.log('Received message:', data);
 
     // Check if client has a clientId (sent from the frontend)
     if (data.clientId) {
-      const existingNode = findNodeByClientId(data.clientId);
+      clientId = data.clientId; // Store the clientId in the connection context
+      const existingNode = findNodeByClientId(clientId);
 
       if (existingNode) {
-        console.log(`Client connected with existing clientId: ${data.clientId}`);
-        ws.send(JSON.stringify({ type: 'clientId', clientId: data.clientId, blocks: existingNode.blocks }));
+        console.log(`Client connected with existing clientId: ${clientId}`);
+        ws.send(JSON.stringify({ type: 'clientId', clientId: clientId, blocks: existingNode.blocks }));
       } else {
-        console.log(`ClientId ${data.clientId} not found, creating new node.`);
+        console.log(`ClientId ${clientId} not found, creating new node.`);
         const newNode = {
-          clientId: data.clientId,
+          clientId: clientId,
           blocks: blockchainData.length > 0 ? deepCopyBlocks(blockchainData[0].blocks) : [createGenesisBlock()],
         };
         blockchainData.push(newNode);
         saveBlockchain();
 
-        ws.send(JSON.stringify({ type: 'clientId', clientId: data.clientId, blocks: newNode.blocks }));
+        ws.send(JSON.stringify({ type: 'clientId', clientId: clientId, blocks: newNode.blocks }));
         broadcastBlockchain();
       }
     } else {
@@ -233,13 +279,28 @@ wss.on('connection', (ws) => {
 
       ws.send(JSON.stringify({ type: 'clientId', clientId: newClientId, blocks: newNode.blocks }));
       broadcastBlockchain();
+
+      clientId = newClientId; // Store the new clientId
     }
   });
 
   ws.on('close', () => {
-    console.log('WebSocket connection closed');
+    if (clientId) {
+      console.log(`WebSocket connection closed for clientId: ${clientId}`);
+
+      // Remove the node associated with the closed connection
+      const nodeIndex = blockchainData.findIndex(node => node.clientId === clientId);
+
+      if (nodeIndex !== -1) {
+        blockchainData.splice(nodeIndex, 1); // Remove the node
+        saveBlockchain(); // Save the updated blockchain
+        broadcastBlockchain(); // Notify other clients
+        console.log(`Node with clientId ${clientId} removed from blockchain.`);
+      }
+    }
   });
 });
+
 
 const deepCopyBlocks = (blocks) => {
   return blocks.map(block => ({
@@ -265,6 +326,15 @@ function broadcastBlockchain() {
     }
   });
 }
+
+// Serve static files from the frontend dist folder
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
+
+// Serve the index.html file for any unknown routes (enables client-side routing)
+app.get('*', (req, res) => {
+  res.sendFile(path.resolve(__dirname, '../frontend/dist', 'index.html'));
+});
+
 
 // Start the server and WebSocket on the same port
 server.listen(port, () => {

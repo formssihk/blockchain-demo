@@ -3,6 +3,9 @@ import Blockchain from './components/Blockchain';
 import './App.css';
 import axios from 'axios';
 import sha256 from 'crypto-js/sha256';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 
 const BASE_URL = 'http://localhost:3000';
 
@@ -115,7 +118,7 @@ function App() {
         return newTicks;
       });
   
-      alert('Block confirmed successfully');
+      toast.success("Block confirmed!");
     } catch (error) {
       console.error('Error confirming block:', error);
       alert('Failed to confirm block');
@@ -213,6 +216,7 @@ function App() {
           />
         ))}
       </div>
+      <ToastContainer />
     </div>
   );
 }
