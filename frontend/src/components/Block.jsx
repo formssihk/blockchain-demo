@@ -29,8 +29,25 @@ function Block({ block, index, updateBlock, rehashBlock, blocks, showTick, confi
     }
   }
 
+  function getBlockClass(isSubsequentBlocksInvalid, block) {
+    let baseClass = 'w-1/3 flex flex-col justify-between p-4 border rounded shadow mb-4 relative ';
+    if (isSubsequentBlocksInvalid) {
+      baseClass += 'bg-red-100';
+    } else if (block.isValid !== true) {
+      baseClass += 'bg-red-100';
+    } else if (block.isConfirmed === false) {
+      baseClass += 'bg-green-100/10';
+    } else {
+      baseClass += 'bg-green-100';
+    }
+  
+    return baseClass;
+  }
+  
+  
+
   return (
-    <div className={`w-1/3 flex flex-col justify-between p-4 border rounded shadow mb-4 relative ${isSubsequentBlocksInvalid || block.isValid !== true ? 'bg-red-100' : 'bg-green-100'}`}>
+    <div className={getBlockClass(isSubsequentBlocksInvalid, block)}>
       {isSubsequentBlocksInvalid || block.isValid !== true ? 
         <div className="absolute top-2 right-2">
           <span className="text-red-500">✗</span> 
@@ -54,6 +71,7 @@ function Block({ block, index, updateBlock, rehashBlock, blocks, showTick, confi
         <p className="text-sm mt-2 break-all"><strong>Previous Hash:</strong> {block.previousHash}</p>
         <p className="text-sm mt-2 break-all"><strong>Current Hash:</strong> {block.hash}</p>
         <p className="text-sm mt-2 break-all"><strong>Block Proposed by:</strong> {block.addedBy}</p>
+        <p className="text-sm mt-2 break-all"><strong>Block Confirmed:</strong> {block.isConfirmed ? 'Yes' : 'No'}</p>
       </div>
       {((isSubsequentBlocksInvalid && index > 0) || (block.isValid != true)) && <p className="text-red-500 mt-2">Block is invalid!</p>}
       { storedClientId === clientId &&

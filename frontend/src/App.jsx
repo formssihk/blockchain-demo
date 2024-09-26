@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Blockchain from './components/Blockchain';
 import './App.css';
 import axios from 'axios';
@@ -11,94 +11,118 @@ function App() {
   const [newBlockData, setNewBlockData] = useState('');
   const [ticks, setTicks] = useState([]);
   const [clientId, setClientId] = useState("");
+  const socketRef = useRef(null); // Use useRef to avoid recreating WebSocket
 
   useEffect(() => {
     const storedClientId = localStorage.getItem('clientId');
+    const BASE_URL = 'http://localhost:3000';
+
     // Fetch blockchain data
     const fetchBlockchain = async () => {
       try {
         const response = await axios.get(`${BASE_URL}/blocks`);
-        setNodes(response.data); // Set the nodes from the response (including clientId and blocks)
-        setTicks(new Array(response.data.length).fill(false)); // Initialize ticks based on node count
+        setNodes(response.data); 
+        setTicks(new Array(response.data.length).fill(false)); 
       } catch (error) {
         console.error('Error fetching blockchain data:', error);
       }
     };
   
     fetchBlockchain();
-  
-    // WebSocket connection for real-time updates
-    const socket = new WebSocket(`ws://localhost:3000`);
-  
-    socket.onopen = () => {
-      if (storedClientId) {
-        // Send the existing clientId to the backend
-        console.log('Sending existing clientId to the server:', storedClientId);
-        socket.send(JSON.stringify({ clientId: storedClientId }));
-      } else {
-        socket.send(JSON.stringify({ clientId: null }));
-      }
-    };
-  
-    socket.onmessage = (message) => {
-      const data = JSON.parse(message.data);
-      if (data.type === 'clientId') {
-        // Store the clientId in localStorage and update the state
-        localStorage.setItem('clientId', data.clientId);
-        setClientId(data.clientId);
-        console.log('New clientId received and saved:', data.clientId);
-      } else if (data.type === 'update') {
-        // Handle blockchain updates
-        setNodes(data.blockchain);
-        setTicks(new Array(data.blockchain.length).fill(false)); // Reset ticks when blockchain updates
-      }
-    };
-  
-    socket.onclose = () => {
-      console.log('WebSocket connection closed');
-    };
-  
-    socket.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
-  
+
+    if (!socketRef.current) {
+      socketRef.current = new WebSocket(`ws://localhost:3000`);
+
+      socketRef.current.onopen = () => {
+        if (storedClientId) {
+          // Send the existing clientId to the backend
+          console.log('Sending existing clientId to the server:', storedClientId);
+          socketRef.current.send(JSON.stringify({ clientId: storedClientId }));
+        } else {
+          // No clientId found, let the backend generate a new one
+          socketRef.current.send(JSON.stringify({ clientId: null }));
+        }
+      };
+
+      socketRef.current.onmessage = (message) => {
+        const data = JSON.parse(message.data);
+        if (data.type === 'clientId') {
+          // Only store the clientId if it's not already in localStorage
+          if (!storedClientId) {
+            localStorage.setItem('clientId', data.clientId);
+            setClientId(data.clientId);
+            console.log('New clientId received and saved:', data.clientId);
+          }
+        } else if (data.type === 'update') {
+          // Handle blockchain updates
+          setNodes(data.blockchain);
+          setTicks(new Array(data.blockchain.length).fill(false)); // Reset ticks when blockchain updates
+        }
+      };
+
+      socketRef.current.onclose = () => {
+        console.log('WebSocket connection closed');
+      };
+
+      socketRef.current.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+    }
+
     // Cleanup WebSocket connection when component unmounts
     return () => {
-      if (socket.readyState === WebSocket.OPEN ) {
+      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
         console.log('Closing WebSocket connection');
-        socket.close();
+        socketRef.current.close();
       }
     };
   }, []); // Empty array ensures this effect runs only once, on mount
   
+  
 
   const addBlock = async () => {
+    const storedClientId = localStorage.getItem('clientId');
     if (newBlockData.trim() === '') {
       alert("Please enter data for the new block.");
       return;
     }
-
+    console.log(`Adding new block:" ${newBlockData}, clientId: ${storedClientId}`);
     try {
-      await axios.post(`${BASE_URL}/blocks`, { newBlockData, clientId });
+      await axios.post(`${BASE_URL}/blocks`, { newBlockData, clientId: storedClientId });
       setNewBlockData('');
     } catch (error) {
       console.error('Error adding new block:', error);
     }
   };
 
-  const confirmBlock = async (nodeIndex, data) => {
-    console.log("confirm block", nodeIndex, data);
-    // try {
-    //   await axios.post(`${BASE_URL}/confirm`, { nodeIndex });
-    //   setTicks((prevTicks) => {
-    //     const newTicks = [...prevTicks];
-    //     newTicks[nodeIndex] = true;
-    //     return newTicks;
-    //   });
-    // } catch (error) {
-    //   console.error('Error confirming block:', error);
-    // }
+  const confirmBlock = async (nodeIndex, block) => {
+    const storedClientId = localStorage.getItem('clientId');
+  
+    if (!storedClientId) {
+      console.error('Client ID is not available');
+      return;
+    }
+  
+    console.log("Confirming block:", nodeIndex, block);
+    
+    try {
+      // Send the clientId and block data to the backend
+      await axios.post(`${BASE_URL}/confirm`, { clientId: storedClientId, data: { index: block } });
+  
+      // Update the tick state to show the block has been confirmed
+      setTicks((prevTicks) => {
+        const newTicks = [...prevTicks];
+        newTicks[nodeIndex] = true;
+        return newTicks;
+      });
+  
+      alert('Block confirmed successfully');
+    } catch (error) {
+      console.error('Error confirming block:', error);
+      alert('Failed to confirm block');
+    }
   };
+  
 
   const updateBlock = (nodeIndex, blockIndex, data) => {
     console.log("data blockchain", nodeIndex, blockIndex, data);

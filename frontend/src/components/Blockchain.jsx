@@ -8,7 +8,10 @@ function Blockchain({ clientId, blocks, updateBlock, rehashBlock, nodeIndex, sho
       <div>
         <h2 className="text-lg font-bold mt-2">{storedClientId === clientId ? "My Node": `Node ${clientId}`}</h2>
       </div>
-      <div className="blockchain p-4 border rounded flex overflow-x-auto p-2 space-x-4 border p-4">
+      <div 
+        className="w-full p-4 border rounded flex overflow-x-auto space-x-4"
+        style={{ maxWidth: '100%' }} // Ensure max-width for scrolling
+      >
         {blocks && blocks.map((block, index) => (
           <Block
             key={index}

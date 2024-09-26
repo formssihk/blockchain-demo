@@ -18,6 +18,7 @@ app.use(express.json());
 const loadBlockchain = () => {
   if (fs.existsSync('blockchain.json')) {
     const data = fs.readFileSync('blockchain.json', 'utf8');
+    console.log('Loaded blockchain data:', data);
     blockchainData = JSON.parse(data);
   } else {
     blockchainData = [];
@@ -25,8 +26,15 @@ const loadBlockchain = () => {
   }
 };
 
+loadBlockchain();
+
 // Save blockchain to a file
 const saveBlockchain = () => {
+  console.log(`
+  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    Saving blockchain data:', ${JSON.stringify(blockchainData)}
+  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  `);
   fs.writeFileSync('blockchain.json', JSON.stringify(blockchainData, null, 2));
 };
 
@@ -51,16 +59,19 @@ function calculateHash(index, data, previousHash) {
 
 // Check if a clientId exists in the blockchain data
 const findNodeByClientId = (clientId) => {
-  return blockchainData.find(node => node.clientId === clientId);
+  console.log(`Finding node with clientId ${clientId}`);
+  console.log(`All nodes: ${JSON.stringify(blockchainData)}`);
+  const data = blockchainData.find(node => node.clientId === clientId);
+  console.log(`Found node: ${JSON.stringify(data)}`);
+  return data;
 };
 
 // API to fetch all blockchain data
 app.get('/blocks', (req, res) => {
-  loadBlockchain();
+  // loadBlockchain();
   res.json(blockchainData);
 });
 
-// API to add a new block to all nodes
 app.post('/blocks', (req, res) => {
   const { newBlockData, clientId } = req.body; // Capture the clientId and newBlockData from the request
 
@@ -130,6 +141,46 @@ app.delete('/blocks', (req, res) => {
   res.json({ message: `Node with clientId ${clientId} deleted successfully` });
 });
 
+app.post('/confirm', (req, res) => {
+  const { clientId, data } = req.body; 
+  if (!clientId || clientId.trim() === '') {
+    return res.status(400).json({ error: "Client ID is required" });
+  }
+
+  const { index } = data; // Assuming block index is passed in the data
+
+  console.log(`Confirming block at index ${index} for clientId ${clientId}`);
+  const node = findNodeByClientId(clientId);
+  if (!node) {
+    return res.status(404).json({ error: "Client ID not found" });
+  }
+
+  // Find the block with the specified index in this client's node
+  const block = node.blocks[index];
+  if (!block) {
+    return res.status(404).json({ error: "Block not found" });
+  }
+
+  // Update only this block's isConfirmed field
+  console.log(`Node ${JSON.stringify(node)}, 
+  +++++++++++++++++++++++++++++++
+  block ${JSON.stringify(block)} confirmed.`);
+  console.log(`+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++`);
+  console.log(`Block at index ${index} for clientId ${clientId} confirmed.`);
+  block.isConfirmed = true;
+
+  console.log(`Node ${JSON.stringify(node)}`),
+  console.log(`Block ${JSON.stringify(block)} confirmed.`);
+  // Save the updated blockchain to the file (which now contains the specific change for this client)
+  saveBlockchain();
+
+  // Broadcast the updated blockchain to all clients (they will receive the correct structure with the single block updated)
+  broadcastBlockchain();
+
+  // Respond with a success message
+  res.json({ message: `Block at index ${index} for clientId ${clientId} confirmed.` });
+});
+
 
 
 // WebSocket server
@@ -188,6 +239,7 @@ wss.on('connection', (ws) => {
     console.log('WebSocket connection closed');
   });
 });
+
 
 // Broadcast updated blockchain to all clients
 function broadcastBlockchain() {
