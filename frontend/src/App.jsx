@@ -85,17 +85,23 @@ function App() {
   const addBlock = async () => {
     const storedClientId = localStorage.getItem('clientId');
     if (newBlockData.trim() === '') {
-      alert("Please enter data for the new block.");
+      toast.error("Please enter data for the new block.");
       return;
     }
-    console.log(`Adding new block:" ${newBlockData}, clientId: ${storedClientId}`);
+  
+    console.log(`Adding new block: ${newBlockData}, clientId: ${storedClientId}`);
     try {
       await axios.post(`${BASE_URL}/blocks`, { newBlockData, clientId: storedClientId });
-      setNewBlockData('');
+      setNewBlockData(''); // Clear input after successful submission
+      toast.success('Block added successfully!'); // Success message
     } catch (error) {
+      // Check if there's a response from the server and if the error object contains the message
+      const errorMessage = error.response?.data?.error || 'Error adding new block';
+      toast.error(`Error: ${errorMessage}`); // Display error message in toast
       console.error('Error adding new block:', error);
     }
   };
+  
 
   const confirmBlock = async (nodeIndex, block) => {
     const storedClientId = localStorage.getItem('clientId');

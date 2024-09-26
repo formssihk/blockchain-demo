@@ -86,8 +86,13 @@ app.post('/blocks', (req, res) => {
     return res.status(404).json({ error: "Client ID not found" });
   }
 
-  // Get the previous block (last block in the first node)
+  // Get the previous block (last block in the node)
   const previousBlock = node.blocks[node.blocks.length - 1];
+
+  // Check if the previous block has been confirmed by 67% of nodes
+  if (!hasConsensus(previousBlock.index)) {
+    return res.status(403).json({ error: "Previous block has not been confirmed by 67% of nodes. Block cannot be added." });
+  }
 
   // Create a new block with the new data
   const newBlock = {
@@ -97,30 +102,33 @@ app.post('/blocks', (req, res) => {
     hash: calculateHash(previousBlock.index + 1, newBlockData, previousBlock.hash),
     isValid: true,
     addedBy: clientId,
-    isConfirmed: false, // This block isn't confirmed yet
+    isConfirmed: false, // New block is not confirmed yet
   };
 
-  // Add the new block to the current node but mark it as not yet confirmed by consensus
-  node.blocks.push({ ...newBlock });
+  // Add the new block to all nodes, but deep copy the block to ensure no reference sharing
+  blockchainData.forEach(node => {
+    const copiedBlock = { ...newBlock }; // Create a shallow copy of the new block
+    node.blocks.push(copiedBlock); // Each node gets its own independent copy
+  });
 
-  // Save the new block (not finalized yet) to the blockchain of the current client node
+  // Save the updated blockchain to the file
   saveBlockchain();
 
-  // Respond with the newly added block (before consensus)
-  res.json({ message: "Block added to client node, waiting for consensus", block: newBlock });
+  // Broadcast the updated blockchain to all clients
+  broadcastBlockchain();
 
-  // Check for consensus across all nodes
-  checkForConsensus(newBlock);
+  // Respond with the newly added block
+  res.json(newBlock);
 });
 
-// Function to check consensus
-const checkForConsensus = (blockToCheck) => {
+// Helper function to check if a block with the given index has consensus (67% confirmed)
+const hasConsensus = (blockIndex) => {
   let confirmedCount = 0;
   const totalNodes = blockchainData.length;
 
-  // Loop through all nodes and count confirmations for this block's index
+  // Loop through all nodes and count confirmations for the block with the given index
   blockchainData.forEach(node => {
-    const block = node.blocks.find(b => b.index === blockToCheck.index);
+    const block = node.blocks.find(b => b.index === blockIndex);
     if (block && block.isConfirmed) {
       confirmedCount++;
     }
@@ -129,35 +137,11 @@ const checkForConsensus = (blockToCheck) => {
   // Calculate percentage of nodes that have confirmed the block
   const consensusPercentage = (confirmedCount / totalNodes) * 100;
 
-  console.log(`Consensus percentage: ${consensusPercentage}%`);
+  console.log(`Consensus for block ${blockIndex}: ${consensusPercentage}%`);
 
-  // If more than 67% of nodes have confirmed, finalize the block
-  if (consensusPercentage > 67) {
-    finalizeBlock(blockToCheck);
-  } else {
-    console.log(`Not enough confirmations yet. ${confirmedCount}/${totalNodes} nodes have confirmed.`);
-  }
+  // Return true if more than 67% of nodes have confirmed the block, otherwise false
+  return consensusPercentage > 67;
 };
-
-// Function to finalize the block after consensus is reached
-const finalizeBlock = (blockToFinalize) => {
-  blockchainData.forEach(node => {
-    const block = node.blocks.find(b => b.index === blockToFinalize.index);
-    if (block) {
-      block.isConfirmed = true; // Mark the block as confirmed
-    }
-  });
-
-  // Save the blockchain with the finalized block
-  saveBlockchain();
-
-  // Broadcast the updated blockchain to all clients
-  broadcastBlockchain();
-
-  console.log(`Block at index ${blockToFinalize.index} has been confirmed by consensus and finalized.`);
-};
-
-
 
 
 app.delete('/blocks', (req, res) => {
