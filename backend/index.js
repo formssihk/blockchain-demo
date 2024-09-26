@@ -20,14 +20,7 @@ const loadBlockchain = () => {
     const data = fs.readFileSync('blockchain.json', 'utf8');
     blockchainData = JSON.parse(data);
   } else {
-    // Ensure that blockchainData is initialized with at least one node (client) and its blocks
-    blockchainData = [
-      {
-        clientId: "1",
-        blocks: [createGenesisBlock()],
-        // blocks: [],
-      },
-    ];
+    blockchainData = [];
     saveBlockchain();
   }
 };
@@ -45,7 +38,8 @@ function createGenesisBlock() {
     previousHash: "0",
     hash: calculateHash(0, "Genesis Block", "0"),
     isValid: true,
-    addedBy: "system", // Genesis block is added by the system
+    addedBy: "system", 
+    isConfirmed: true,
   };
 }
 
@@ -55,6 +49,11 @@ function calculateHash(index, data, previousHash) {
   return crypto.createHash('sha256').update(index + data + previousHash).digest('hex');
 }
 
+// Check if a clientId exists in the blockchain data
+const findNodeByClientId = (clientId) => {
+  return blockchainData.find(node => node.clientId === clientId);
+};
+
 // API to fetch all blockchain data
 app.get('/blocks', (req, res) => {
   loadBlockchain();
@@ -63,37 +62,75 @@ app.get('/blocks', (req, res) => {
 
 // API to add a new block to all nodes
 app.post('/blocks', (req, res) => {
-  const { newBlockData, clientId } = req.body; // Capture the clientId to know who added the block
+  const { newBlockData, clientId } = req.body; // Capture the clientId and newBlockData from the request
+
   if (!newBlockData || newBlockData.trim() === '') {
     return res.status(400).json({ error: "Block data is required" });
   }
 
-  // Get the blocks from the first node to calculate the previous block's hash
+  if (!clientId || clientId.trim() === '') {
+    return res.status(400).json({ error: "Client ID is required" });
+  }
+
+  // Get the previous block (last block in the first node)
   const previousBlock = blockchainData[0].blocks[blockchainData[0].blocks.length - 1];
 
-  // Create new block
+  // Create a new block with the new data
   const newBlock = {
     index: previousBlock.index + 1,
     data: newBlockData,
     previousHash: previousBlock.hash,
     hash: calculateHash(previousBlock.index + 1, newBlockData, previousBlock.hash),
     isValid: true,
-    addedBy: clientId, // Store which client added this block
+    addedBy: clientId, // Set the addedBy field to the clientId from the frontend
+    isConfirmed: false,
   };
 
-  // Add the new block to all nodes
+  // Add the new block to all nodes in the blockchain
   blockchainData.forEach(node => {
     node.blocks.push(newBlock);
   });
 
-  // Save the updated blockchain
+  // Save the updated blockchain to the file
   saveBlockchain();
 
-  // Notify all connected clients
+  // Broadcast the updated blockchain to all clients
   broadcastBlockchain();
 
+  // Respond with the newly added block
   res.json(newBlock);
 });
+
+// API to delete a node with a specific clientId
+app.delete('/blocks', (req, res) => {
+  const { clientId } = req.body; // Capture the clientId from the request body
+
+  if (!clientId || clientId.trim() === '') {
+    return res.status(400).json({ error: "Client ID is required" });
+  }
+
+  // Find the index of the node with the specified clientId
+  const nodeIndex = blockchainData.findIndex(node => node.clientId === clientId);
+
+  if (nodeIndex === -1) {
+    // If the clientId does not exist, return an error
+    return res.status(404).json({ error: "Client ID not found" });
+  }
+
+  // Remove the node from the blockchainData array
+  blockchainData.splice(nodeIndex, 1);
+
+  // Save the updated blockchain data to the file
+  saveBlockchain();
+
+  // Broadcast the updated blockchain to all clients
+  broadcastBlockchain();
+
+  // Respond with a success message
+  res.json({ message: `Node with clientId ${clientId} deleted successfully` });
+});
+
+
 
 // WebSocket server
 const server = http.createServer(app);
@@ -105,38 +142,44 @@ wss.on('connection', (ws) => {
   ws.on('message', (message) => {
     const data = JSON.parse(message);
     console.log('Received message:', data);
+
     // Check if client has a clientId (sent from the frontend)
     if (data.clientId) {
-      console.log(`Client connected with existing clientId: ${data.clientId}`);
+      const existingNode = findNodeByClientId(data.clientId);
+
+      if (existingNode) {
+        // If clientId exists in blockchain.json, acknowledge it
+        console.log(`Client connected with existing clientId: ${data.clientId}`);
+        ws.send(JSON.stringify({ type: 'clientId', clientId: data.clientId, blocks: existingNode.blocks }));
+      } else {
+        // If clientId does not exist, create a new node
+        console.log(`ClientId ${data.clientId} not found, creating new node.`);
+        const newNode = {
+          clientId: data.clientId,
+          blocks: blockchainData.length > 0 ? [...blockchainData[0].blocks] : [createGenesisBlock()],
+        };
+        blockchainData.push(newNode);
+        saveBlockchain();
+
+        // Send the new clientId and blocks to the client
+        ws.send(JSON.stringify({ type: 'clientId', clientId: data.clientId, blocks: newNode.blocks }));
+        broadcastBlockchain();
+      }
     } else {
       // Generate a new clientId for the new client
       const newClientId = uuidv4();
       console.log(`Generated new clientId: ${newClientId}`);
 
-      // Check if blockchainData[0] exists and has blocks
-      let copiedBlocks = [];
-      if (blockchainData.length === 0) {
-        // If the blockchain is empty, initialize with a genesis block
-        copiedBlocks = [createGenesisBlock()];
-      } else {
-        // Otherwise, copy the blocks from the first node
-        copiedBlocks = [...blockchainData[0].blocks];
-      }
-
-      // Create a new node with the copied blocks
       const newNode = {
         clientId: newClientId,
-        blocks: copiedBlocks,
+        blocks: blockchainData.length > 0 ? [...blockchainData[0].blocks] : [createGenesisBlock()],
       };
 
-      // Add the new node to the blockchain data
       blockchainData.push(newNode);
       saveBlockchain();
 
       // Send the new clientId and copied blocks to the client
-      ws.send(JSON.stringify({ type: 'clientId', clientId: newClientId, blocks: copiedBlocks }));
-      
-      // Notify all clients about the updated blockchain
+      ws.send(JSON.stringify({ type: 'clientId', clientId: newClientId, blocks: newNode.blocks }));
       broadcastBlockchain();
     }
   });
@@ -145,7 +188,6 @@ wss.on('connection', (ws) => {
     console.log('WebSocket connection closed');
   });
 });
-
 
 // Broadcast updated blockchain to all clients
 function broadcastBlockchain() {

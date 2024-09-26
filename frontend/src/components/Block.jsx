@@ -1,8 +1,9 @@
 /* eslint-disable react/prop-types */
 import sha256 from 'crypto-js/sha256';
 
-function Block({ block, index, updateBlock, rehashBlock, blocks, showTick }) {
+function Block({ block, index, updateBlock, rehashBlock, blocks, showTick, confirmBlock, clientId }) {
   const previousBlock = index === 0 ? null : blocks[index - 1];
+  const storedClientId = localStorage.getItem('clientId');
 
   const isPreviousHashValid = previousBlock
     ? block.previousHash === previousBlock.hash
@@ -46,21 +47,31 @@ function Block({ block, index, updateBlock, rehashBlock, blocks, showTick }) {
           value={block.data}
           onChange={(e) => updateBlock(e.target.value)}
           className="p-2 border rounded w-1/2 text-sm"
+          disabled={storedClientId === clientId ? false : true}
         />
       </div>
       <div>
         <p className="text-sm mt-2 break-all"><strong>Previous Hash:</strong> {block.previousHash}</p>
         <p className="text-sm mt-2 break-all"><strong>Current Hash:</strong> {block.hash}</p>
+        <p className="text-sm mt-2 break-all"><strong>Block Proposed by:</strong> {block.addedBy}</p>
       </div>
       {((isSubsequentBlocksInvalid && index > 0) || (block.isValid != true)) && <p className="text-red-500 mt-2">Block is invalid!</p>}
-      <div>
-        <button
-          onClick={rehashBlock}
-          className="mt-2 p-2 bg-green-500 text-white rounded"
-        >
-          Rehash Block
-        </button>
-      </div>
+      { storedClientId === clientId &&
+          <div className='space-x-4'>
+          <button
+            onClick={rehashBlock}
+            className="mt-2 p-2 bg-green-500 text-white rounded"
+          >
+            Rehash Block
+          </button>
+          {!block.isConfirmed && <button
+            onClick={() => confirmBlock(block)}
+            className="mt-2 p-2 bg-green-500 text-white rounded"
+          >
+            Confirm Block
+          </button>}
+        </div>
+      }
     </div>
   );
 }

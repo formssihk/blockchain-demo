@@ -79,24 +79,25 @@ function App() {
     }
 
     try {
-      await axios.post(`${BASE_URL}/blocks`, { newBlockData });
+      await axios.post(`${BASE_URL}/blocks`, { newBlockData, clientId });
       setNewBlockData('');
     } catch (error) {
       console.error('Error adding new block:', error);
     }
   };
 
-  const confirmBlock = async (nodeIndex) => {
-    try {
-      await axios.post(`${BASE_URL}/confirm`, { nodeIndex });
-      setTicks((prevTicks) => {
-        const newTicks = [...prevTicks];
-        newTicks[nodeIndex] = true;
-        return newTicks;
-      });
-    } catch (error) {
-      console.error('Error confirming block:', error);
-    }
+  const confirmBlock = async (nodeIndex, data) => {
+    console.log("confirm block", nodeIndex, data);
+    // try {
+    //   await axios.post(`${BASE_URL}/confirm`, { nodeIndex });
+    //   setTicks((prevTicks) => {
+    //     const newTicks = [...prevTicks];
+    //     newTicks[nodeIndex] = true;
+    //     return newTicks;
+    //   });
+    // } catch (error) {
+    //   console.error('Error confirming block:', error);
+    // }
   };
 
   const updateBlock = (nodeIndex, blockIndex, data) => {
@@ -123,21 +124,60 @@ function App() {
     setNodes(updatedNodes);
   };
 
+  const deleteBlockchain = async () => {
+    const storedClientId = localStorage.getItem('clientId'); // Get the clientId from localStorage
+  
+    if (!storedClientId) {
+      alert('No client ID found in local storage');
+      return;
+    }
+  
+    try {
+      // Send a DELETE request to the server with the clientId
+      await axios.delete(`${BASE_URL}/blocks`, {
+        data: { clientId: storedClientId }, // Send clientId in the request body
+      });
+  
+      // Remove the clientId from localStorage
+      localStorage.removeItem('clientId');
+  
+      // Update the state to clear nodes in the frontend
+      setNodes([]);
+  
+      alert('Blockchain data deleted successfully');
+    } catch (error) {
+      console.error('Error deleting blockchain:', error);
+      alert('Failed to delete blockchain data');
+    }
+  };
+  
+
   return (
     <div className="App">
-      <input
-        type="text"
-        value={newBlockData}
-        onChange={(e) => setNewBlockData(e.target.value)}
-        placeholder="Enter new block data"
-        className="p-2 border rounded mr-4 text-sm"
-      />
-      <button
-        onClick={addBlock}
-        className="p-2 bg-blue-500 text-white rounded mb-4"
-      >
-        Add Block
-      </button>
+      <div className='flex '>
+        <div>
+          <input
+            type="text"
+            value={newBlockData}
+            onChange={(e) => setNewBlockData(e.target.value)}
+            placeholder="Enter new block data"
+            className="p-2 border rounded mr-4 text-sm"
+          />
+          <button
+            onClick={addBlock}
+            className="p-2 bg-blue-500 text-white rounded mb-4"
+          >
+            Add Block
+          </button>
+        </div>
+        <button
+          onClick={deleteBlockchain}
+          className="p-2 bg-red-500 text-white rounded mb-4"
+        >
+          Delete Node Data
+        </button>
+
+      </div>
       <div>
         {nodes.map((node, nodeIndex) => (
           <Blockchain
@@ -146,6 +186,7 @@ function App() {
             blocks={node.blocks} // Pass the array of blocks for this node
             updateBlock={(blockIndex, data) => updateBlock(nodeIndex, blockIndex, data)}
             rehashBlock={(blockIndex) => rehashBlock(nodeIndex, blockIndex)}
+            confirmBlock={(blockIndex) => confirmBlock(nodeIndex, blockIndex)}
             nodeIndex={nodeIndex}
             showTick={ticks[nodeIndex]} // Pass the tick state for the current node
           />
