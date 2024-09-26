@@ -6,7 +6,6 @@ const http = require('http');
 const cors = require('cors');
 const path = require('path');
 const app = express();
-const port = 3000;
 
 let blockchainData = [];
 
@@ -312,15 +311,14 @@ function broadcastBlockchain() {
 }
 
 // Serve static files from the frontend dist folder
-app.use(express.static(path.join(__dirname, '../frontend/dist')));
+app.use(express.static(path.join(__dirname, 'frontend/dist')));
 
-// Serve the index.html file for any unknown routes (enables client-side routing)
+// Serve index.html for any unknown routes (enables React client-side routing)
 app.get('*', (req, res) => {
-  res.sendFile(path.resolve(__dirname, '../frontend/dist', 'index.html'));
+  res.sendFile(path.resolve(__dirname, 'frontend/dist', 'index.html'));
 });
 
-
-// Start the server and WebSocket on the same port
-server.listen(port, () => {
-  console.log(`Blockchain API and WebSocket listening at http://localhost:${port}`);
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, () => {
+  console.log(`Blockchain API and WebSocket listening at http://localhost:${PORT}`);
 });
