@@ -30,7 +30,7 @@ function Block({ block, index, updateBlock, rehashBlock, blocks, showTick, confi
   }
 
   function getBlockClass(isSubsequentBlocksInvalid, block) {
-    let baseClass = 'w-1/3 flex flex-col justify-between p-4 border rounded shadow mb-4 relative ';
+    let baseClass = 'w-1/3 overflow-x-auto flex flex-col justify-between p-4 border rounded shadow mb-4 relative ';
     if (isSubsequentBlocksInvalid) {
       baseClass += 'bg-red-100';
     } else if (block.isValid !== true) {

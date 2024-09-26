@@ -13,21 +13,20 @@ function App() {
   const [clientId, setClientId] = useState("");
   const socketRef = useRef(null); // Use useRef to avoid recreating WebSocket
 
+  // Fetch blockchain data
+  const fetchBlockchain = async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/blocks`);
+      setNodes(response.data); 
+      setTicks(new Array(response.data.length).fill(false)); 
+    } catch (error) {
+      console.error('Error fetching blockchain data:', error);
+    }
+  };
+
   useEffect(() => {
     const storedClientId = localStorage.getItem('clientId');
-    const BASE_URL = 'http://localhost:3000';
 
-    // Fetch blockchain data
-    const fetchBlockchain = async () => {
-      try {
-        const response = await axios.get(`${BASE_URL}/blocks`);
-        setNodes(response.data); 
-        setTicks(new Array(response.data.length).fill(false)); 
-      } catch (error) {
-        console.error('Error fetching blockchain data:', error);
-      }
-    };
-  
     fetchBlockchain();
 
     if (!socketRef.current) {
@@ -161,14 +160,12 @@ function App() {
       await axios.delete(`${BASE_URL}/blocks`, {
         data: { clientId: storedClientId }, // Send clientId in the request body
       });
-  
-      // Remove the clientId from localStorage
-      localStorage.removeItem('clientId');
+
   
       // Update the state to clear nodes in the frontend
       setNodes([]);
   
-      alert('Blockchain data deleted successfully');
+      fetchBlockchain()
     } catch (error) {
       console.error('Error deleting blockchain:', error);
       alert('Failed to delete blockchain data');
