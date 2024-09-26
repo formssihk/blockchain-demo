@@ -7,7 +7,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 
-const BASE_URL = 'http://localhost:3000';
+const BASE_URL = 'http://localhost:8080';
 
 function App() {
   const [nodes, setNodes] = useState([]); 
@@ -33,7 +33,7 @@ function App() {
     fetchBlockchain();
 
     if (!socketRef.current) {
-      socketRef.current = new WebSocket(`ws://localhost:3000`);
+      socketRef.current = new WebSocket(`ws://localhost:8080`);
 
       socketRef.current.onopen = () => {
         if (storedClientId) {

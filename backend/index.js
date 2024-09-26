@@ -311,11 +311,11 @@ function broadcastBlockchain() {
 }
 
 // Serve static files from the frontend dist folder
-app.use(express.static(path.join(__dirname, 'frontend/dist')));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Serve index.html for any unknown routes (enables React client-side routing)
 app.get('*', (req, res) => {
-  res.sendFile(path.resolve(__dirname, 'frontend/dist', 'index.html'));
+  res.sendFile(path.resolve(__dirname, 'public', 'index.html'));
 });
 
 const PORT = process.env.PORT || 8080;

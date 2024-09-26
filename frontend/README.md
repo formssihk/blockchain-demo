@@ -1,4 +1,4 @@
-# Blockchain Demostration
+# Blockchain Demonstration
 
 Simple demonstration of blockchain 
 

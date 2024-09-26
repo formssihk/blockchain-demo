@@ -1,38 +1,40 @@
-# Stage 1: Build the frontend (React with Vite)
-FROM node:18 AS build-app
+# Stage 1: Build frontend
+FROM node:18-alpine AS frontend-build
+
 WORKDIR /app/frontend
 
-# Copy only the package.json and yarn.lock files for dependency installation
-COPY ./frontend/package.json ./frontend/yarn.lock ./
-
-# Install dependencies using Yarn
+# Copy the frontend package files and install dependencies using yarn
+COPY frontend/package*.json ./
+COPY frontend/yarn.lock ./
 RUN yarn install
 
-# Copy the rest of the frontend source code
-COPY ./frontend ./
-
-# Build the frontend
+# Copy the entire frontend source code and build it
+COPY frontend/ ./
 RUN yarn build
 
-# Stage 2: Set up the backend and serve the frontend
-FROM node:18 AS build-backend
-WORKDIR /app
+# Print the contents of the build directory to verify build success
+RUN ls -la /app/frontend/dist/
 
-# Copy backend code
-COPY ./backend/package.json ./backend/package-lock.json ./backend/
-RUN cd backend && npm install
+# Stage 2: Build backend and serve frontend
+FROM node:18-alpine AS backend
 
-# Ensure the /app/backend/frontend/dist directory exists before copying
-RUN mkdir -p /app/backend/frontend/dist
+WORKDIR /app/backend
 
-# Copy the built frontend files from the previous stage to the backend folder
-COPY --from=build-app /app/frontend/dist /app/backend/frontend/dist
+# Install backend dependencies
+COPY backend/package*.json ./
+RUN npm install
 
-# Copy the rest of the backend code
-COPY ./backend ./backend
+# Copy backend source code
+COPY backend/ ./
 
-# Expose the backend port 8080
-EXPOSE 8080
+# Copy the frontend build to the backend's public folder
+COPY --from=frontend-build /app/frontend/dist/ ./public/
+
+# Print the contents of the public directory to verify frontend is copied
+RUN ls -la ./public/
+
+# Expose backend server port
+EXPOSE 3000
 
 # Start the backend server
-CMD ["node", "./backend/index.js"]
+CMD ["node", "index.js"]
