@@ -1,4 +1,5 @@
 const express = require('express');
+const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const WebSocket = require('ws');
 const http = require('http');
@@ -101,42 +102,50 @@ const wss = new WebSocket.Server({ server });
 wss.on('connection', (ws) => {
   console.log('New WebSocket connection');
 
-  // Generate a new clientId for the new node
-  const newClientId = (blockchainData.length + 1).toString();
-
-  // Check if blockchainData[0] exists and has blocks
-  let copiedBlocks = [];
-  if (blockchainData[0] && blockchainData[0].blocks) {
-    copiedBlocks = [...blockchainData[0].blocks]; // Copy blocks from the first node
-  } else {
-    // If there are no blocks, start with a genesis block
-    copiedBlocks = [createGenesisBlock()];
-  }
-
-  // Create a new node with the copied blocks
-  const newNode = {
-    clientId: newClientId,
-    blocks: copiedBlocks,
-  };
-
-  // Add the new node to the blockchain data
-  blockchainData.push(newNode);
-  saveBlockchain();
-
-  // Send the copied blocks to the newly connected client
-  ws.send(JSON.stringify({ clientId: newClientId, blocks: copiedBlocks }));
-
-  // Notify all clients about the updated blockchain
-  broadcastBlockchain();
-
   ws.on('message', (message) => {
-    console.log(`Received message: ${message}`);
+    const data = JSON.parse(message);
+    console.log('Received message:', data);
+    // Check if client has a clientId (sent from the frontend)
+    if (data.clientId) {
+      console.log(`Client connected with existing clientId: ${data.clientId}`);
+    } else {
+      // Generate a new clientId for the new client
+      const newClientId = uuidv4();
+      console.log(`Generated new clientId: ${newClientId}`);
+
+      // Check if blockchainData[0] exists and has blocks
+      let copiedBlocks = [];
+      if (blockchainData.length === 0) {
+        // If the blockchain is empty, initialize with a genesis block
+        copiedBlocks = [createGenesisBlock()];
+      } else {
+        // Otherwise, copy the blocks from the first node
+        copiedBlocks = [...blockchainData[0].blocks];
+      }
+
+      // Create a new node with the copied blocks
+      const newNode = {
+        clientId: newClientId,
+        blocks: copiedBlocks,
+      };
+
+      // Add the new node to the blockchain data
+      blockchainData.push(newNode);
+      saveBlockchain();
+
+      // Send the new clientId and copied blocks to the client
+      ws.send(JSON.stringify({ type: 'clientId', clientId: newClientId, blocks: copiedBlocks }));
+      
+      // Notify all clients about the updated blockchain
+      broadcastBlockchain();
+    }
   });
 
   ws.on('close', () => {
     console.log('WebSocket connection closed');
   });
 });
+
 
 // Broadcast updated blockchain to all clients
 function broadcastBlockchain() {

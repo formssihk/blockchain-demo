@@ -7,11 +7,13 @@ import sha256 from 'crypto-js/sha256';
 const BASE_URL = 'http://localhost:3000';
 
 function App() {
-  const [nodes, setNodes] = useState([]); // Each node is an object containing clientId and blocks
+  const [nodes, setNodes] = useState([]); 
   const [newBlockData, setNewBlockData] = useState('');
-  const [ticks, setTicks] = useState([]); // Ticks state dynamically adjusts based on number of nodes
+  const [ticks, setTicks] = useState([]);
+  const [clientId, setClientId] = useState("");
 
   useEffect(() => {
+    const storedClientId = localStorage.getItem('clientId');
     // Fetch blockchain data
     const fetchBlockchain = async () => {
       try {
@@ -29,12 +31,24 @@ function App() {
     const socket = new WebSocket(`ws://localhost:3000`);
   
     socket.onopen = () => {
-      console.log('WebSocket connection opened');
+      if (storedClientId) {
+        // Send the existing clientId to the backend
+        console.log('Sending existing clientId to the server:', storedClientId);
+        socket.send(JSON.stringify({ clientId: storedClientId }));
+      } else {
+        socket.send(JSON.stringify({ clientId: null }));
+      }
     };
   
     socket.onmessage = (message) => {
       const data = JSON.parse(message.data);
-      if (data.type === 'update') {
+      if (data.type === 'clientId') {
+        // Store the clientId in localStorage and update the state
+        localStorage.setItem('clientId', data.clientId);
+        setClientId(data.clientId);
+        console.log('New clientId received and saved:', data.clientId);
+      } else if (data.type === 'update') {
+        // Handle blockchain updates
         setNodes(data.blockchain);
         setTicks(new Array(data.blockchain.length).fill(false)); // Reset ticks when blockchain updates
       }
@@ -50,7 +64,7 @@ function App() {
   
     // Cleanup WebSocket connection when component unmounts
     return () => {
-      if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+      if (socket.readyState === WebSocket.OPEN ) {
         console.log('Closing WebSocket connection');
         socket.close();
       }
