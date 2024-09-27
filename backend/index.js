@@ -178,20 +178,24 @@ app.post('/blocks/tampered', (req, res) => {
     return res.status(404).json({ error: "Client ID not found" });
   }
 
+  // Ensure the block exists
   const block = node.blocks.find(b => b.index === blockIndex);
   if (!block) {
     return res.status(404).json({ error: "Block not found" });
   }
 
-  // Mark the block as tampered
-  block.wasTampered = true;
+  // Mark the tampered block and all subsequent blocks as tampered
+  for (let i = blockIndex; i < node.blocks.length; i++) {
+    node.blocks[i].wasTampered = true;
+  }
 
-  // Save the blockchain and broadcast the tampered status to other nodes
+  // Save the blockchain and broadcast the tampered status to all clients
   saveBlockchain();
   broadcastBlockchain();
 
-  res.json({ message: `Block at index ${blockIndex} for clientId ${clientId} marked as tampered.` });
+  res.json({ message: `Block at index ${blockIndex} and all subsequent blocks for clientId ${clientId} marked as tampered.` });
 });
+
 
 
 
