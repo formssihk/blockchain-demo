@@ -276,7 +276,7 @@ function App() {
 
   return (
     <div className="App">
-      <div className='flex '>
+      <div className='flex space-x-4'>
         <div>
           <input
             type="text"

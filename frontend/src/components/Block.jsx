@@ -90,19 +90,26 @@ function Block({ block, index, updateBlock, rehashBlock, blocks, showTick, confi
       </div>
       {((isSubsequentBlocksInvalid && index > 0) || (block.isValid != true)) && <p className="text-red-500 mt-2">Block is invalid!</p>}
       { storedClientId === clientId &&
-          <div className='space-x-4'>
-          <button
-            onClick={rehashBlock}
-            className="mt-2 p-2 bg-green-500 text-white rounded"
-          >
-            Rehash Block
-          </button>
-          {!block.isConfirmed && <button
-            onClick={() => confirmBlock(block)}
-            className="mt-2 p-2 bg-green-500 text-white rounded"
-          >
-            Confirm Block
-          </button>}
+          <div className='w-full flex justify-center'>
+            <div className='w-2/3 '>
+              <button
+                onClick={rehashBlock}
+                className="m-2 p-2 bg-orange-400 text-white text-sm rounded"
+              >
+                Rehash Block
+              </button>
+            </div>
+            {!block.isConfirmed && 
+              <div className='w-2/3 '>
+                <button
+                  onClick={() => confirmBlock(block)}
+                  className="m-2  p-2 bg-green-500 text-white text-sm rounded"
+                >
+                  Confirm Block
+                </button>
+              </div>
+            }
+
         </div>
       }
     </div>
