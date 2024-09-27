@@ -30,7 +30,7 @@ function Block({ block, index, updateBlock, rehashBlock, blocks, showTick, confi
   }
 
   function getBlockClass(isSubsequentBlocksInvalid, block) {
-    let baseClass = 'w-1/3 overflow-x-auto flex flex-col justify-between p-4 border rounded shadow mb-4 relative ';
+    let baseClass = 'w-1/3 shrink-0 flex-col justify-between p-4 border rounded shadow relative ';
     if (block.wasTampered) {
       baseClass += 'bg-red-200'; // Tampered block gets a red background
     } else if (isSubsequentBlocksInvalid) {
@@ -69,7 +69,7 @@ function Block({ block, index, updateBlock, rehashBlock, blocks, showTick, confi
   };
   
   return (
-    <div className={getBlockClass(isSubsequentBlocksInvalid, block)}>
+    <div className={getBlockClass(isSubsequentBlocksInvalid, block)} >
       {showStatusIcon(isSubsequentBlocksInvalid, block)}
       <p className="text-lg font-bold">Block {block.index + 1}</p>
       <div className="mt-2">

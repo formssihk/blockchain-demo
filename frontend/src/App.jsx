@@ -6,15 +6,15 @@ import sha256 from 'crypto-js/sha256';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-
-const BASE_URL = 'http://localhost:8080';
-
 function App() {
   const [nodes, setNodes] = useState([]); 
   const [newBlockData, setNewBlockData] = useState('');
   const [ticks, setTicks] = useState([]);
   const [clientId, setClientId] = useState("");
   const socketRef = useRef(null); // Use useRef to avoid recreating WebSocket
+  
+  const BASE_URL = import.meta.env.VITE_API_URL;
+  const WS_URL = import.meta.env.VITE_WS_URL;
 
   // Fetch blockchain data
   const fetchBlockchain = async () => {
@@ -33,7 +33,7 @@ function App() {
     fetchBlockchain();
 
     if (!socketRef.current) {
-      socketRef.current = new WebSocket(`ws://localhost:8080`);
+      socketRef.current = new WebSocket(`${WS_URL}`);
 
       socketRef.current.onopen = () => {
         if (storedClientId) {
