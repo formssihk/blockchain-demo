@@ -7,6 +7,8 @@ const cors = require('cors');
 const path = require('path');
 const app = express();
 
+const CONSENSUS_PERCENTAGE = 67; // 67% consensus required for block confirmation
+
 let blockchainData = [];
 
 // Enable CORS for all routes
@@ -29,11 +31,6 @@ loadBlockchain();
 
 // Save blockchain to a file
 const saveBlockchain = () => {
-  console.log(`
-  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    Saving blockchain data:', ${JSON.stringify(blockchainData)}
-  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  `);
   fs.writeFileSync('blockchain.json', JSON.stringify(blockchainData, null, 2));
 };
 
@@ -166,7 +163,7 @@ const hasConsensus = (blockIndex) => {
   console.log(`Consensus for block ${blockIndex}: ${consensusPercentage}%`);
 
   // Return true if more than 67% of nodes have confirmed the block, otherwise false
-  return consensusPercentage > 67;
+  return consensusPercentage > CONSENSUS_PERCENTAGE;
 };
 
 app.post('/blocks/tampered', (req, res) => {

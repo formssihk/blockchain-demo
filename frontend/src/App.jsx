@@ -119,8 +119,8 @@ function App() {
     console.log(`Adding new block: ${newBlockData}, clientId: ${storedClientId}`);
     try {
       await axios.post(`${BASE_URL}/blocks`, { newBlockData, clientId: storedClientId });
-      setNewBlockData(''); // Clear input after successful submission
-      toast.success('Block added successfully!'); // Success message
+      setNewBlockData(''); 
+      toast.success('Block added successfully!');
     } catch (error) {
       // Check if there's a response from the server and if the error object contains the message
       const errorMessage = error.response?.data?.error || 'Error adding new block';
