@@ -219,15 +219,34 @@ function App() {
   
   
   const rehashBlock = (nodeIndex, blockIndex) => {
+    // Make a shallow copy of the nodes state
     const updatedNodes = [...nodes];
+  
+    // Access the specific block in the corresponding node
     const block = updatedNodes[nodeIndex].blocks[blockIndex];
+  
+    // Recalculate the hash using the block's index, data, and previous hash
     const blockCurrHash = sha256(block.index + block.data + block.previousHash).toString();
-    const updatedBlock = { ...block, hash: blockCurrHash };
-
-    // Update the block in the corresponding node
+  
+    // Update the block's hash, set isValid to true, and wasTampered to false
+    const updatedBlock = {
+      ...block,
+      hash: blockCurrHash,
+      isValid: true, 
+      wasTampered: false, 
+      isConfirmed: false, 
+    };
+  
+    // Replace the updated block in the corresponding node
     updatedNodes[nodeIndex].blocks[blockIndex] = updatedBlock;
+  
+    // Update the nodes state to trigger re-render
     setNodes(updatedNodes);
+  
+    // Optionally, you can show a success message
+    toast.success("Block rehashed successfully.");
   };
+  
 
   const deleteBlockchain = async () => {
     const storedClientId = localStorage.getItem('clientId'); // Get the clientId from localStorage
