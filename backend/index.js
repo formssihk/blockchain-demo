@@ -351,7 +351,6 @@ const deepCopyBlocks = (blocks) => {
 
 // Broadcast updated blockchain to all clients
 function broadcastBlockchain() {
-  console.log(`Broadcasting updated blockchain to all clients ${JSON.stringify(blockchainData)}`);
   const data = JSON.stringify({ type: 'update', blockchain: blockchainData });
   wss.clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {

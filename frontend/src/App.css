@@ -3,9 +3,9 @@
 @tailwind components;
 @tailwind utilities;
 
-.container {
+/* .container {
   max-width: 95vw;
-}
+} */
 
 /* src/App.css */
 @keyframes fadeIn {
