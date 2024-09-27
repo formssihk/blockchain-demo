@@ -2,6 +2,7 @@ version: '3'
 
 services:
   blockchain-ui:
+    image: blockchain-demo
     build:
       context: .
       dockerfile: Dockerfile
