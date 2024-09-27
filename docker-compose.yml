@@ -12,5 +12,6 @@ services:
       NODE_ENV: production
     command: >
       sh -c "
+      if [ -f /app/backend/blockchain.json ]; then rm /app/backend/blockchain.json; fi &&
       npm --prefix /app/backend install &&
       node /app/backend/index.js"
