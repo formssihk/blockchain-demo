@@ -37,7 +37,6 @@ const saveBlockchain = () => {
   fs.writeFileSync('blockchain.json', JSON.stringify(blockchainData, null, 2));
 };
 
-// Create Genesis block
 function createGenesisBlock() {
   return {
     index: 0,
@@ -47,8 +46,10 @@ function createGenesisBlock() {
     isValid: true,
     addedBy: "system", 
     isConfirmed: true,
+    wasTampered: false,
   };
 }
+
 
 // Calculate hash for the block
 function calculateHash(index, data, previousHash) {
@@ -85,6 +86,15 @@ app.post('/blocks', (req, res) => {
     return res.status(404).json({ error: "Client ID not found" });
   }
 
+  // Check if any block in the user's chain has been tampered
+  const tamperedBlock = node.blocks.find(block => block.wasTampered);
+
+  if (tamperedBlock) {
+    return res.status(403).json({ 
+      error: `A previous block in the chain (block index ${tamperedBlock.index}) has been tampered with. New blocks cannot be added until the issue is resolved.` 
+    });
+  }
+
   // Get the previous block (last block in the node)
   const previousBlock = node.blocks[node.blocks.length - 1];
 
@@ -93,7 +103,6 @@ app.post('/blocks', (req, res) => {
     return res.status(403).json({ error: "Previous block has not been confirmed by 67% of nodes. Block cannot be added." });
   }
 
-  // Create a new block with the new data
   const newBlock = {
     index: previousBlock.index + 1,
     data: newBlockData,
@@ -101,23 +110,41 @@ app.post('/blocks', (req, res) => {
     hash: calculateHash(previousBlock.index + 1, newBlockData, previousBlock.hash),
     isValid: true,
     addedBy: clientId,
-    isConfirmed: false, // New block is not confirmed yet
+    isConfirmed: false,
+    wasTampered: false, 
   };
 
-  // Add the new block to all nodes, but deep copy the block to ensure no reference sharing
+  // Keep track of nodes that did not receive the new block due to tampering
+  const nodesSkippedDueToTampering = [];
+
+  // Add the new block to all nodes that are not tampered
   blockchainData.forEach(node => {
-    const copiedBlock = { ...newBlock }; // Create a shallow copy of the new block
-    node.blocks.push(copiedBlock); // Each node gets its own independent copy
+    const tamperedBlock = node.blocks.find(block => block.wasTampered);
+
+    if (!tamperedBlock) {
+      const copiedBlock = { ...newBlock }; // Create a shallow copy of the new block
+      node.blocks.push(copiedBlock); // Add the block only if no tampered blocks
+    } else {
+      nodesSkippedDueToTampering.push(node.clientId);
+    }
   });
 
-  // Save the updated blockchain to the file
+  // Save the updated blockchain data
   saveBlockchain();
 
   // Broadcast the updated blockchain to all clients
   broadcastBlockchain();
 
-  // Respond with the newly added block
-  res.json(newBlock);
+  // Respond with the newly added block and information on which nodes were skipped
+  if (nodesSkippedDueToTampering.length > 0) {
+    res.status(207).json({
+      message: "New block added, but skipped for some nodes due to tampered blocks.",
+      skippedNodes: nodesSkippedDueToTampering,
+      newBlock
+    });
+  } else {
+    res.json(newBlock);
+  }
 });
 
 // Helper function to check if a block with the given index has consensus (67% confirmed)
@@ -142,6 +169,31 @@ const hasConsensus = (blockIndex) => {
   return consensusPercentage > 67;
 };
 
+app.post('/blocks/tampered', (req, res) => {
+  const { clientId, blockIndex } = req.body;
+
+  // Find the node and block to update
+  const node = findNodeByClientId(clientId);
+  if (!node) {
+    return res.status(404).json({ error: "Client ID not found" });
+  }
+
+  const block = node.blocks.find(b => b.index === blockIndex);
+  if (!block) {
+    return res.status(404).json({ error: "Block not found" });
+  }
+
+  // Mark the block as tampered
+  block.wasTampered = true;
+
+  // Save the blockchain and broadcast the tampered status to other nodes
+  saveBlockchain();
+  broadcastBlockchain();
+
+  res.json({ message: `Block at index ${blockIndex} for clientId ${clientId} marked as tampered.` });
+});
+
+
 
 app.delete('/blocks', (req, res) => {
   const { clientId } = req.body; // Capture the clientId from the request body
@@ -150,18 +202,18 @@ app.delete('/blocks', (req, res) => {
     return res.status(400).json({ error: "Client ID is required" });
   }
 
-  // Find the index of the node with the specified clientId
-  const nodeIndex = blockchainData.findIndex(node => node.clientId === clientId);
+  // Find the node with the specified clientId
+  const userNode = blockchainData.find(node => node.clientId === clientId);
 
-  if (nodeIndex === -1) {
+  if (!userNode) {
     // If the clientId does not exist, return an error
     return res.status(404).json({ error: "Client ID not found" });
   }
 
-  // Remove all blocks except the Genesis block for all nodes
+  // Remove all blocks except the Genesis block for all nodes, except the userNode
   blockchainData.forEach(node => {
-    if (node.blocks.length > 1) {
-      node.blocks = [node.blocks[0]]; // Keep only the Genesis block
+    if (node.clientId !== clientId && node.blocks.length > 1) {
+      node.blocks = [node.blocks[0]]; // Keep only the Genesis block for non-user nodes
     }
   });
 
@@ -172,8 +224,9 @@ app.delete('/blocks', (req, res) => {
   broadcastBlockchain();
 
   // Respond with a success message
-  res.json({ message: `All blocks added by clientId ${clientId} were removed successfully, only Genesis blocks remain.` });
+  res.json({ message: `All blocks for other nodes were removed successfully, only the Genesis block remains. The user's blocks remain intact.` });
 });
+
 
 
 app.post('/confirm', (req, res) => {

@@ -31,7 +31,9 @@ function Block({ block, index, updateBlock, rehashBlock, blocks, showTick, confi
 
   function getBlockClass(isSubsequentBlocksInvalid, block) {
     let baseClass = 'w-1/3 overflow-x-auto flex flex-col justify-between p-4 border rounded shadow mb-4 relative ';
-    if (isSubsequentBlocksInvalid) {
+    if (block.wasTampered) {
+      baseClass += 'bg-red-200'; // Tampered block gets a red background
+    } else if (isSubsequentBlocksInvalid) {
       baseClass += 'bg-red-100';
     } else if (block.isValid !== true) {
       baseClass += 'bg-red-100';
@@ -40,22 +42,28 @@ function Block({ block, index, updateBlock, rehashBlock, blocks, showTick, confi
     } else {
       baseClass += 'bg-green-100';
     }
-  
     return baseClass;
   }
-  
-  
 
+  function showStatusIcon(isSubsequentBlocksInvalid, block) {
+    if (isSubsequentBlocksInvalid || block.isValid !== true || block.wasTampered) {
+      return (
+        <div className="absolute top-2 right-2">
+          <span className="text-red-500">✗</span>
+        </div>
+      );
+    } else {
+      return (
+        <div className="absolute top-2 right-2">
+          <span className="text-green-500">✓</span>
+        </div>
+      );
+    }
+  }
+  
   return (
     <div className={getBlockClass(isSubsequentBlocksInvalid, block)}>
-      {isSubsequentBlocksInvalid || block.isValid !== true ? 
-        <div className="absolute top-2 right-2">
-          <span className="text-red-500">✗</span> 
-        </div> :
-        <div className="absolute top-2 right-2">
-          <span className="text-green-500">✓</span> 
-        </div> 
-      }
+      {showStatusIcon(isSubsequentBlocksInvalid, block)}
       <p className="text-lg font-bold">Block {block.index + 1}</p>
       <div className="mt-2">
         <label className="font-semibold">Data: </label>

@@ -48,19 +48,28 @@ function App() {
 
       socketRef.current.onmessage = (message) => {
         const data = JSON.parse(message.data);
+        const storedClientId = localStorage.getItem('clientId');
+      
         if (data.type === 'clientId') {
-          // Only store the clientId if it's not already in localStorage
+          // Store the clientId if not already in localStorage
           if (!storedClientId) {
             localStorage.setItem('clientId', data.clientId);
             setClientId(data.clientId);
             console.log('New clientId received and saved:', data.clientId);
           }
         } else if (data.type === 'update') {
-          // Handle blockchain updates
-          setNodes(data.blockchain);
-          setTicks(new Array(data.blockchain.length).fill(false)); // Reset ticks when blockchain updates
+          // Validate only the user's node based on clientId
+          const userNode = data.blockchain.find(node => node.clientId === storedClientId);
+          
+          if (userNode && validateUserNode(userNode)) {
+            setNodes(data.blockchain); // Set the new blockchain state only if the user's node is valid
+            setTicks(new Array(data.blockchain.length).fill(false)); // Reset ticks when blockchain updates
+          } else {
+            toast.error("Received tampered data for your node, rejecting update.");
+          }
         }
       };
+      
 
       socketRef.current.onclose = () => {
         console.log('WebSocket connection closed');
@@ -80,6 +89,24 @@ function App() {
     };
   }, []); 
   
+  const validateUserNode = (userNode) => {
+    const blocks = userNode.blocks;
+    
+    for (let i = 0; i < blocks.length; i++) {
+      const block = blocks[i];
+  
+      // Recalculate the hash of the current block
+      const recalculatedHash = sha256(block.index + block.data + block.previousHash).toString();
+  
+      // If the recalculated hash doesn't match the block's current hash, the block is tampered with
+      if (block.hash !== recalculatedHash) {
+        console.error(`Block tampering detected in user's node: ${userNode.clientId}, block index: ${block.index}`);
+        return false; // Return false if tampering is detected
+      }
+    }
+  
+    return true; // Return true if no tampering is detected
+  };
   
 
   const addBlock = async () => {
@@ -105,16 +132,24 @@ function App() {
 
   const confirmBlock = async (nodeIndex, block) => {
     const storedClientId = localStorage.getItem('clientId');
-  
+    
     if (!storedClientId) {
       console.error('Client ID is not available');
       return;
     }
   
+    const blockData = nodes[nodeIndex].blocks[block]; // Retrieve the block to confirm
+    const calculatedHash = sha256(blockData.index + blockData.data + blockData.previousHash).toString();
+  
+    // Check if the block data has been tampered with
+    if (calculatedHash !== blockData.hash) {
+      toast.error("Block data has been tampered with! Cannot confirm.");
+      return;
+    }
+  
     console.log("Confirming block:", nodeIndex, block);
-    
+  
     try {
-      // Send the clientId and block data to the backend
       await axios.post(`${BASE_URL}/confirm`, { clientId: storedClientId, data: { index: block } });
   
       // Update the tick state to show the block has been confirmed
@@ -131,20 +166,36 @@ function App() {
     }
   };
   
+  
 
-  const updateBlock = (nodeIndex, blockIndex, data) => {
-    console.log("data blockchain", nodeIndex, blockIndex, data);
-
+  const updateBlock = async (nodeIndex, blockIndex, data) => {
     const updatedNodes = [...nodes];
     const block = updatedNodes[nodeIndex].blocks[blockIndex];
     const blockCurrHash = sha256(block.index + data + block.previousHash).toString();
-    const updatedBlock = { ...block, data, hash: blockCurrHash, isValid: false };
     
-    // Update the block in the corresponding node
+    // Check if tampered
+    const isTampered = blockCurrHash !== block.hash;
+  
+    // Update the block's data and tampering status
+    const updatedBlock = { ...block, data, hash: blockCurrHash, isValid: !isTampered };
+  
     updatedNodes[nodeIndex].blocks[blockIndex] = updatedBlock;
     setNodes(updatedNodes);
+  
+    // If the block is tampered, notify the backend
+    if (isTampered) {
+      try {
+        await axios.post(`${BASE_URL}/blocks/tampered`, {
+          clientId: nodes[nodeIndex].clientId,
+          blockIndex: blockIndex,
+        });
+        toast.error("Block tampered! Other nodes are notified.");
+      } catch (error) {
+        console.error('Error notifying backend of tampering:', error);
+      }
+    }
   };
-
+  
   const rehashBlock = (nodeIndex, blockIndex) => {
     const updatedNodes = [...nodes];
     const block = updatedNodes[nodeIndex].blocks[blockIndex];
@@ -222,7 +273,17 @@ function App() {
           />
         ))}
       </div>
-      <ToastContainer />
+      <ToastContainer
+        autoClose={2000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover={false}
+        theme="light"
+        />
     </div>
   );
 }
