@@ -7,6 +7,8 @@ const cors = require('cors');
 const path = require('path');
 const app = express();
 
+const CONSENSUS_PERCENTAGE = 67; // 67% consensus required for block confirmation
+
 let blockchainData = [];
 
 // Enable CORS for all routes
@@ -29,11 +31,6 @@ loadBlockchain();
 
 // Save blockchain to a file
 const saveBlockchain = () => {
-  console.log(`
-  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    Saving blockchain data:', ${JSON.stringify(blockchainData)}
-  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  `);
   fs.writeFileSync('blockchain.json', JSON.stringify(blockchainData, null, 2));
 };
 
@@ -166,7 +163,7 @@ const hasConsensus = (blockIndex) => {
   console.log(`Consensus for block ${blockIndex}: ${consensusPercentage}%`);
 
   // Return true if more than 67% of nodes have confirmed the block, otherwise false
-  return consensusPercentage > 67;
+  return consensusPercentage > CONSENSUS_PERCENTAGE;
 };
 
 app.post('/blocks/tampered', (req, res) => {
@@ -200,7 +197,7 @@ app.post('/blocks/tampered', (req, res) => {
 
 
 app.delete('/blocks', (req, res) => {
-  const { clientId } = req.body; // Capture the clientId from the request body
+  const { clientId } = req.body; 
 
   if (!clientId || clientId.trim() === '') {
     return res.status(400).json({ error: "Client ID is required" });
@@ -210,15 +207,12 @@ app.delete('/blocks', (req, res) => {
   const userNode = blockchainData.find(node => node.clientId === clientId);
 
   if (!userNode) {
-    // If the clientId does not exist, return an error
     return res.status(404).json({ error: "Client ID not found" });
   }
 
-  // Remove all blocks except the Genesis block for all nodes, except the userNode
+  // Reset all nodes (including the user's node) to only have the Genesis block
   blockchainData.forEach(node => {
-    if (node.clientId !== clientId && node.blocks.length > 1) {
-      node.blocks = [node.blocks[0]]; // Keep only the Genesis block for non-user nodes
-    }
+    node.blocks = [createGenesisBlock()]; // Reset each node's blocks to only the Genesis block
   });
 
   // Save the updated blockchain data to the file
@@ -228,8 +222,9 @@ app.delete('/blocks', (req, res) => {
   broadcastBlockchain();
 
   // Respond with a success message
-  res.json({ message: `All blocks for other nodes were removed successfully, only the Genesis block remains. The user's blocks remain intact.` });
+  res.json({ message: `All nodes were reset to only contain the Genesis block.` });
 });
+
 
 
 
@@ -255,8 +250,6 @@ app.post('/confirm', (req, res) => {
 
   // Update only this block's isConfirmed field
   block.isConfirmed = true;
-
-  console.log(`==============BLOCKCHAIN DATA AFTER UPDATE===================\nNode ${JSON.stringify(blockchainData)}\nBlock ${JSON.stringify(block)} confirmed.\n`);
 
   // Save the updated blockchain to the file (which now contains the specific change for this client)
   saveBlockchain();

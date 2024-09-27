@@ -119,8 +119,8 @@ function App() {
     console.log(`Adding new block: ${newBlockData}, clientId: ${storedClientId}`);
     try {
       await axios.post(`${BASE_URL}/blocks`, { newBlockData, clientId: storedClientId });
-      setNewBlockData(''); // Clear input after successful submission
-      toast.success('Block added successfully!'); // Success message
+      setNewBlockData(''); 
+      toast.success('Block added successfully!');
     } catch (error) {
       // Check if there's a response from the server and if the error object contains the message
       const errorMessage = error.response?.data?.error || 'Error adding new block';
@@ -169,32 +169,54 @@ function App() {
   
 
   const updateBlock = async (nodeIndex, blockIndex, data) => {
-    const updatedNodes = [...nodes];
-    const block = updatedNodes[nodeIndex].blocks[blockIndex];
-    const blockCurrHash = sha256(block.index + data + block.previousHash).toString();
-    
-    // Check if tampered
+    const updatedNodes = [...nodes]; // Make a copy of the nodes state
+    const block = updatedNodes[nodeIndex].blocks[blockIndex]; // Get the block to update
+    const blockCurrHash = sha256(block.index + data + block.previousHash).toString(); // Recalculate the hash
+  
+    // Check if the block has been tampered
     const isTampered = blockCurrHash !== block.hash;
   
     // Update the block's data and tampering status
-    const updatedBlock = { ...block, data, hash: blockCurrHash, isValid: !isTampered };
+    const updatedBlock = { 
+      ...block, 
+      data, 
+      hash: blockCurrHash, 
+      isValid: !isTampered, 
+      wasTampered: isTampered // Mark the block as tampered if necessary
+    };
   
+    // Update the block in the nodes array
     updatedNodes[nodeIndex].blocks[blockIndex] = updatedBlock;
-    setNodes(updatedNodes);
   
-    // If the block is tampered, notify the backend
+    // If the block is tampered, invalidate all subsequent blocks
     if (isTampered) {
+      for (let i = blockIndex + 1; i < updatedNodes[nodeIndex].blocks.length; i++) {
+        updatedNodes[nodeIndex].blocks[i] = {
+          ...updatedNodes[nodeIndex].blocks[i],
+          isValid: false, // Mark subsequent blocks as invalid
+          wasTampered: true // Mark as tampered
+        };
+      }
+  
+      // Notify the backend about the tampered block
       try {
         await axios.post(`${BASE_URL}/blocks/tampered`, {
           clientId: nodes[nodeIndex].clientId,
-          blockIndex: blockIndex,
+          blockIndex: blockIndex
         });
         toast.error("Block tampered! Other nodes are notified.");
       } catch (error) {
         console.error('Error notifying backend of tampering:', error);
+        toast.error("Error notifying backend of tampering.");
       }
+    } else {
+      toast.success("Block updated successfully.");
     }
+  
+    // Set the updated nodes back to state
+    setNodes(updatedNodes);
   };
+  
   
   const rehashBlock = (nodeIndex, blockIndex) => {
     const updatedNodes = [...nodes];
