@@ -275,29 +275,34 @@ function App() {
   
 
   return (
-    <div className="App">
-      <div className='flex space-x-4'>
-        <div>
+    <div className="">
+      <h1 className="text-2xl font-bold text-center my-4">Blockchain Demo</h1>
+      <div className='m-2 lg:m-4 flex flex-wrap'>
+        <div className='flex items-center w-full lg:w-1/3 mx-2 my-2'>
           <input
             type="text"
             value={newBlockData}
             onChange={(e) => setNewBlockData(e.target.value)}
             placeholder="Enter new block data"
-            className="p-2 border rounded mr-4 text-sm"
+            className="w-2/3 p-2 border rounded mr-2 lg:mr-4 text-sm"
           />
+          <div className='w-1/3 flex items-center'>
+            <button
+              onClick={addBlock}
+              className="text-center p-2 bg-blue-500 text-white rounded text-sm lg:text-base"
+            >
+              Add Block
+            </button>
+          </div>
+        </div>
+        <div className='flex items-center w-full lg:w-1/3 mx-2 my-2'>
           <button
-            onClick={addBlock}
-            className="p-2 bg-blue-500 text-white rounded mb-4"
+            onClick={deleteBlockchain}
+            className="text-center p-2 bg-red-500 text-white rounded text-sm lg:text-base"
           >
-            Add Block
+            Restart Blockchain
           </button>
         </div>
-        <button
-          onClick={deleteBlockchain}
-          className="p-2 bg-red-500 text-white rounded mb-4"
-        >
-          Delete Node Data
-        </button>
 
       </div>
       <div>
