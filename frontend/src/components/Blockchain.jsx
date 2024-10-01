@@ -6,7 +6,7 @@ function Blockchain({ clientId, blocks, updateBlock, rehashBlock, nodeIndex, sho
   return (
     <div className='flex flex-col overflow-x-scroll'>
       <div>
-        <h2 className="text-lg font-bold mx-2 lg:mx-4 mb-1 lg:my-2">{storedClientId === clientId ? "My Node": `Node ${clientId}`}</h2>
+        <h2 className="text-lg font-bold mx-2 lg:mx-4 mb-1 lg:my-2">{storedClientId === clientId ? "My Node": `Node ${nodeIndex+1}`}</h2>
       </div>
       <div 
         className="p-2 lg:p-4 border rounded flex overflow-x-scroll space-x-4 flex-none"

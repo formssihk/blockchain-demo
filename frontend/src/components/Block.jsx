@@ -55,7 +55,7 @@ function Block({ block, index, updateBlock, rehashBlock, blocks, showTick, confi
     } else if (block.isConfirmed === false) {
       return (
         <div className="absolute top-2 right-2">
-          <span className="text-yellow-500">!</span>
+          <span className="text-yellow-500">?</span>
         </div>
       );
     } 
@@ -101,7 +101,7 @@ function Block({ block, index, updateBlock, rehashBlock, blocks, showTick, confi
             <div className='w-full lg:w-1/2 flex justify-center'>
               <button
                 onClick={rehashBlock}
-                className="w-full m-2 p-2 bg-orange-400 text-white text-sm rounded"
+                className="w-full m-1 lg:m-2 p-2 bg-orange-400 text-white text-xs lg:text-sm rounded"
               >
                 Rehash Block
               </button>
@@ -110,7 +110,7 @@ function Block({ block, index, updateBlock, rehashBlock, blocks, showTick, confi
               <div className='w-full lg:w-1/2 flex justify-center'>
                 <button
                   onClick={() => confirmBlock(block)}
-                  className="w-full m-2 p-2 bg-green-500 text-white text-sm rounded"
+                  className="w-full mx-1 lg:m-2 p-2 bg-green-500 text-white text-xs lg:text-sm rounded"
                 >
                   Confirm Block
                 </button>

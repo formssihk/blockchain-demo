@@ -28,66 +28,90 @@ function App() {
   };
 
   useEffect(() => {
-    const storedClientId = localStorage.getItem('clientId');
+  const storedClientId = localStorage.getItem('clientId');
 
-    fetchBlockchain();
+  const fetchBlockchain = async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/blocks`);
 
-    if (!socketRef.current) {
-      socketRef.current = new WebSocket(`${WS_URL}`);
+      // Sort the nodes so that the current user's node appears first
+      const sortedNodes = response.data.sort((a, b) => {
+        if (a.clientId === storedClientId) return -1;
+        if (b.clientId === storedClientId) return 1;
+        return 0;
+      });
 
-      socketRef.current.onopen = () => {
-        if (storedClientId) {
-          // Send the existing clientId to the backend
-          console.log('Sending existing clientId to the server:', storedClientId);
-          socketRef.current.send(JSON.stringify({ clientId: storedClientId }));
-        } else {
-          // No clientId found, let the backend generate a new one
-          socketRef.current.send(JSON.stringify({ clientId: null }));
-        }
-      };
-
-      socketRef.current.onmessage = (message) => {
-        const data = JSON.parse(message.data);
-        const storedClientId = localStorage.getItem('clientId');
-      
-        if (data.type === 'clientId') {
-          // Store the clientId if not already in localStorage
-          if (!storedClientId) {
-            localStorage.setItem('clientId', data.clientId);
-            setClientId(data.clientId);
-            console.log('New clientId received and saved:', data.clientId);
-          }
-        } else if (data.type === 'update') {
-          // Validate only the user's node based on clientId
-          const userNode = data.blockchain.find(node => node.clientId === storedClientId);
-          
-          if (userNode && validateUserNode(userNode)) {
-            setNodes(data.blockchain); // Set the new blockchain state only if the user's node is valid
-            setTicks(new Array(data.blockchain.length).fill(false)); // Reset ticks when blockchain updates
-          } else {
-            toast.error("Received tampered data for your node, rejecting update.");
-          }
-        }
-      };
-      
-
-      socketRef.current.onclose = () => {
-        console.log('WebSocket connection closed');
-      };
-
-      socketRef.current.onerror = (error) => {
-        console.error('WebSocket error:', error);
-      };
+      setNodes(sortedNodes); 
+      setTicks(new Array(sortedNodes.length).fill(false)); 
+    } catch (error) {
+      console.error('Error fetching blockchain data:', error);
     }
+  };
 
-    // Cleanup WebSocket connection when component unmounts
-    return () => {
-      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-        console.log('Closing WebSocket connection');
-        socketRef.current.close();
+  fetchBlockchain();
+
+  if (!socketRef.current) {
+    socketRef.current = new WebSocket(`${WS_URL}`);
+
+    socketRef.current.onopen = () => {
+      if (storedClientId) {
+        // Send the existing clientId to the backend
+        console.log('Sending existing clientId to the server:', storedClientId);
+        socketRef.current.send(JSON.stringify({ clientId: storedClientId }));
+      } else {
+        // No clientId found, let the backend generate a new one
+        socketRef.current.send(JSON.stringify({ clientId: null }));
       }
     };
-  }, []); 
+
+    socketRef.current.onmessage = (message) => {
+      const data = JSON.parse(message.data);
+      const storedClientId = localStorage.getItem('clientId');
+
+      if (data.type === 'clientId') {
+        // Store the clientId if not already in localStorage
+        if (!storedClientId) {
+          localStorage.setItem('clientId', data.clientId);
+          setClientId(data.clientId);
+          console.log('New clientId received and saved:', data.clientId);
+        }
+      } else if (data.type === 'update') {
+        // Validate only the user's node based on clientId
+        const userNode = data.blockchain.find(node => node.clientId === storedClientId);
+
+        if (userNode && validateUserNode(userNode)) {
+          // Sort the blockchain data so that the user's node appears first
+          const sortedNodes = data.blockchain.sort((a, b) => {
+            if (a.clientId === storedClientId) return -1;
+            if (b.clientId === storedClientId) return 1;
+            return 0;
+          });
+
+          setNodes(sortedNodes); // Set the sorted blockchain state
+          setTicks(new Array(sortedNodes.length).fill(false)); // Reset ticks when blockchain updates
+        } else {
+          toast.error("Received tampered data for your node, rejecting update.");
+        }
+      }
+    };
+
+    socketRef.current.onclose = () => {
+      console.log('WebSocket connection closed');
+    };
+
+    socketRef.current.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+  }
+
+  return () => {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      console.log('Closing WebSocket connection');
+      socketRef.current.close();
+    }
+  };
+}, []);
+
   
   const validateUserNode = (userNode) => {
     const blocks = userNode.blocks;
