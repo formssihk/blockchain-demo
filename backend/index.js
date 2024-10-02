@@ -145,7 +145,6 @@ app.post('/blocks', (req, res) => {
   }
 });
 
-// Helper function to check if a block with the given index has consensus (67% confirmed)
 const hasConsensus = (blockIndex) => {
   let confirmedCount = 0;
   const totalNodes = blockchainData.length;
@@ -277,6 +276,7 @@ const updateNodesWithConfirmedBlock = (blockIndex, confirmedBlock) => {
       // Update the block's data to match the confirmed block
       block.data = confirmedBlock.data;
       block.hash = confirmedBlock.hash;
+      block.isRejected = false; // Reset rejection flag since it's now confirmed
       block.isConfirmed = true;
       block.wasTampered = false; // Reset tampering flag since it's now confirmed
     }
