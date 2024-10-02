@@ -76,10 +76,12 @@ function App() {
           console.log('New clientId received and saved:', data.clientId);
         }
       } else if (data.type === 'update') {
+        console.log('Received blockchain update:', data.blockchain);
         // Validate only the user's node based on clientId
         const userNode = data.blockchain.find(node => node.clientId === storedClientId);
 
-        if (userNode && validateUserNode(userNode)) {
+        // if (userNode && validateUserNode(userNode)) {
+        if (userNode) {
           // Sort the blockchain data so that the user's node appears first
           const sortedNodes = data.blockchain.sort((a, b) => {
             if (a.clientId === storedClientId) return -1;
@@ -162,14 +164,14 @@ function App() {
       return;
     }
   
-    const blockData = nodes[nodeIndex].blocks[block]; // Retrieve the block to confirm
-    const calculatedHash = sha256(blockData.index + blockData.data + blockData.previousHash).toString();
+    // const blockData = nodes[nodeIndex].blocks[block]; // Retrieve the block to confirm
+    // const calculatedHash = sha256(blockData.index + blockData.data + blockData.previousHash).toString();
   
-    // Check if the block data has been tampered with
-    if (calculatedHash !== blockData.hash) {
-      toast.error("Block data has been tampered with! Cannot confirm.");
-      return;
-    }
+    // // Check if the block data has been tampered with
+    // if (calculatedHash !== blockData.hash) {
+    //   toast.error("Block data has been tampered with! Cannot confirm.");
+    //   return;
+    // }
   
     console.log("Confirming block:", nodeIndex, block);
   
@@ -186,7 +188,7 @@ function App() {
       toast.success("Block confirmed!");
     } catch (error) {
       console.error('Error confirming block:', error);
-      alert('Failed to confirm block');
+      toast.error('Failed to confirm block: ', error);
     }
   };
 
@@ -262,9 +264,10 @@ function App() {
       try {
         await axios.post(`${BASE_URL}/blocks/tampered`, {
           clientId: nodes[nodeIndex].clientId,
+          data: data,
           blockIndex: blockIndex
         });
-        toast.error("Block tampered! Other nodes are notified.");
+        // toast.error("Block tampered! Other nodes are notified.");
       } catch (error) {
         console.error('Error notifying backend of tampering:', error);
         toast.error("Error notifying backend of tampering.");
@@ -347,7 +350,7 @@ function App() {
             value={newBlockData}
             onChange={(e) => setNewBlockData(e.target.value)}
             placeholder="Enter new block data"
-            className="w-2/3 p-2 border rounded mr-2 lg:mr-4 text-sm"
+            className="w-2/3 p-2 border rounded mr-2 text-sm"
           />
           <div className='w-1/3 flex items-center'>
             <button
@@ -361,7 +364,7 @@ function App() {
         <div className='flex flex-wrap items-center w-full lg:w-1/3 mx-2 my-2'>
           <button
             onClick={refreshPage}
-            className="text-center p-2 bg-yellow-300 text-white rounded text-sm lg:text-base mr-2"
+            className="text-center p-2 bg-orange-400 text-white rounded text-sm lg:text-base mr-2"
           >
             Restart My Node
           </button>
