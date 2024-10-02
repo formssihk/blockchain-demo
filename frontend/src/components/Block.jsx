@@ -64,6 +64,13 @@ function Block({
     }
   }
 
+  const formatHash = (hash) => {
+    if (!hash || hash.length <= 10) {
+      return hash; // Return the hash as is if it's too short
+    }
+    return `${hash.slice(0, 5)}...${hash.slice(-5)}`;
+  };
+
   return (
     <div className={getBlockClass(block)}>
       {showStatusIcon(block)}
@@ -79,9 +86,9 @@ function Block({
         />
       </div>
       <div>
-        <p className="text-xs lg:text-sm mt-2 break-all"><strong>Previous Hash:</strong> {block.previousHash}</p>
-        <p className="text-xs lg:text-sm mt-2 break-all"><strong>Current Hash:</strong> {block.hash}</p>
-        <p className="text-xs lg:text-sm mt-2 break-all"><strong>Block Proposed by:</strong> {block.addedBy}</p>
+        <p className="text-xs lg:text-sm mt-2 break-all"><strong>Previous Hash:</strong> {formatHash(block.previousHash)}</p>
+        <p className="text-xs lg:text-sm mt-2 break-all"><strong>Current Hash:</strong> {formatHash(block.hash)}</p>
+        <p className="text-xs lg:text-sm mt-2 break-all"><strong>Block Proposed by:</strong> {formatHash(block.addedBy)}</p>
         <p className="text-xs lg:text-sm mt-2 break-all"><strong>Block Confirmed:</strong> {block.isConfirmed ? 'Yes' : 'No'}</p>
       </div>
       {block.isValid === false && <p className="text-red-500 mt-2">Block is invalid!</p>}
