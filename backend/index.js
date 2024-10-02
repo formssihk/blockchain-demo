@@ -44,6 +44,7 @@ function createGenesisBlock() {
     addedBy: "system", 
     isConfirmed: true,
     wasTampered: false,
+    isRejected: false,
   };
 }
 
@@ -108,7 +109,8 @@ app.post('/blocks', (req, res) => {
     isValid: true,
     addedBy: clientId,
     isConfirmed: false,
-    wasTampered: false, 
+    wasTampered: false,
+    isRejected: false, 
   };
 
   // Keep track of nodes that did not receive the new block due to tampering
@@ -193,9 +195,6 @@ app.post('/blocks/tampered', (req, res) => {
   res.json({ message: `Block at index ${blockIndex} and all subsequent blocks for clientId ${clientId} marked as tampered.` });
 });
 
-
-
-
 app.delete('/blocks', (req, res) => {
   const { clientId } = req.body; 
 
@@ -224,9 +223,6 @@ app.delete('/blocks', (req, res) => {
   // Respond with a success message
   res.json({ message: `All nodes were reset to only contain the Genesis block.` });
 });
-
-
-
 
 app.post('/confirm', (req, res) => {
   const { clientId, data } = req.body; 
@@ -259,6 +255,39 @@ app.post('/confirm', (req, res) => {
 
   // Respond with a success message
   res.json({ message: `Block at index ${index} for clientId ${clientId} confirmed.` });
+});
+
+app.post('/reject', (req, res) => {
+  const { clientId, data } = req.body; 
+  if (!clientId || clientId.trim() === '') {
+    return res.status(400).json({ error: "Client ID is required" });
+  }
+
+  const { index } = data; // Assuming block index is passed in the data
+
+  console.log(`Confirming block at index ${index} for clientId ${clientId}`);
+  const blockData = blockchainData.find(node => node.clientId === clientId);
+  if (!blockData) {
+    return res.status(404).json({ error: "Client ID not found" });
+  }
+
+  // Find the block with the specified index in this client's node
+  const block = blockData.blocks.find(b => b.index === index);
+  if (!block) {
+    return res.status(404).json({ error: "Block not found" });
+  }
+
+  // Update only this block's isConfirmed field
+  block.isRejected = true;
+
+  // Save the updated blockchain to the file (which now contains the specific change for this client)
+  saveBlockchain();
+
+  // Broadcast the updated blockchain to all clients (they will receive the correct structure with the single block updated)
+  broadcastBlockchain();
+
+  // Respond with a success message
+  res.json({ message: `Block at index ${index} for clientId ${clientId} rejected.` });
 });
 
 

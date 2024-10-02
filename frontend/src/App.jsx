@@ -28,66 +28,90 @@ function App() {
   };
 
   useEffect(() => {
-    const storedClientId = localStorage.getItem('clientId');
+  const storedClientId = localStorage.getItem('clientId');
 
-    fetchBlockchain();
+  const fetchBlockchain = async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/blocks`);
 
-    if (!socketRef.current) {
-      socketRef.current = new WebSocket(`${WS_URL}`);
+      // Sort the nodes so that the current user's node appears first
+      const sortedNodes = response.data.sort((a, b) => {
+        if (a.clientId === storedClientId) return -1;
+        if (b.clientId === storedClientId) return 1;
+        return 0;
+      });
 
-      socketRef.current.onopen = () => {
-        if (storedClientId) {
-          // Send the existing clientId to the backend
-          console.log('Sending existing clientId to the server:', storedClientId);
-          socketRef.current.send(JSON.stringify({ clientId: storedClientId }));
-        } else {
-          // No clientId found, let the backend generate a new one
-          socketRef.current.send(JSON.stringify({ clientId: null }));
-        }
-      };
-
-      socketRef.current.onmessage = (message) => {
-        const data = JSON.parse(message.data);
-        const storedClientId = localStorage.getItem('clientId');
-      
-        if (data.type === 'clientId') {
-          // Store the clientId if not already in localStorage
-          if (!storedClientId) {
-            localStorage.setItem('clientId', data.clientId);
-            setClientId(data.clientId);
-            console.log('New clientId received and saved:', data.clientId);
-          }
-        } else if (data.type === 'update') {
-          // Validate only the user's node based on clientId
-          const userNode = data.blockchain.find(node => node.clientId === storedClientId);
-          
-          if (userNode && validateUserNode(userNode)) {
-            setNodes(data.blockchain); // Set the new blockchain state only if the user's node is valid
-            setTicks(new Array(data.blockchain.length).fill(false)); // Reset ticks when blockchain updates
-          } else {
-            toast.error("Received tampered data for your node, rejecting update.");
-          }
-        }
-      };
-      
-
-      socketRef.current.onclose = () => {
-        console.log('WebSocket connection closed');
-      };
-
-      socketRef.current.onerror = (error) => {
-        console.error('WebSocket error:', error);
-      };
+      setNodes(sortedNodes); 
+      setTicks(new Array(sortedNodes.length).fill(false)); 
+    } catch (error) {
+      console.error('Error fetching blockchain data:', error);
     }
+  };
 
-    // Cleanup WebSocket connection when component unmounts
-    return () => {
-      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-        console.log('Closing WebSocket connection');
-        socketRef.current.close();
+  fetchBlockchain();
+
+  if (!socketRef.current) {
+    socketRef.current = new WebSocket(`${WS_URL}`);
+
+    socketRef.current.onopen = () => {
+      if (storedClientId) {
+        // Send the existing clientId to the backend
+        console.log('Sending existing clientId to the server:', storedClientId);
+        socketRef.current.send(JSON.stringify({ clientId: storedClientId }));
+      } else {
+        // No clientId found, let the backend generate a new one
+        socketRef.current.send(JSON.stringify({ clientId: null }));
       }
     };
-  }, []); 
+
+    socketRef.current.onmessage = (message) => {
+      const data = JSON.parse(message.data);
+      const storedClientId = localStorage.getItem('clientId');
+
+      if (data.type === 'clientId') {
+        // Store the clientId if not already in localStorage
+        if (!storedClientId) {
+          localStorage.setItem('clientId', data.clientId);
+          setClientId(data.clientId);
+          console.log('New clientId received and saved:', data.clientId);
+        }
+      } else if (data.type === 'update') {
+        // Validate only the user's node based on clientId
+        const userNode = data.blockchain.find(node => node.clientId === storedClientId);
+
+        if (userNode && validateUserNode(userNode)) {
+          // Sort the blockchain data so that the user's node appears first
+          const sortedNodes = data.blockchain.sort((a, b) => {
+            if (a.clientId === storedClientId) return -1;
+            if (b.clientId === storedClientId) return 1;
+            return 0;
+          });
+
+          setNodes(sortedNodes); // Set the sorted blockchain state
+          setTicks(new Array(sortedNodes.length).fill(false)); // Reset ticks when blockchain updates
+        } else {
+          toast.error("Received tampered data for your node, rejecting update.");
+        }
+      }
+    };
+
+    socketRef.current.onclose = () => {
+      console.log('WebSocket connection closed');
+    };
+
+    socketRef.current.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+  }
+
+  return () => {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      console.log('Closing WebSocket connection');
+      socketRef.current.close();
+    }
+  };
+}, []);
+
   
   const validateUserNode = (userNode) => {
     const blocks = userNode.blocks;
@@ -160,6 +184,42 @@ function App() {
       });
   
       toast.success("Block confirmed!");
+    } catch (error) {
+      console.error('Error confirming block:', error);
+      alert('Failed to confirm block');
+    }
+  };
+
+  const rejectBlock = async (nodeIndex, block) => {
+    const storedClientId = localStorage.getItem('clientId');
+    
+    if (!storedClientId) {
+      console.error('Client ID is not available');
+      return;
+    }
+  
+    const blockData = nodes[nodeIndex].blocks[block]; // Retrieve the block to confirm
+    const calculatedHash = sha256(blockData.index + blockData.data + blockData.previousHash).toString();
+  
+    // Check if the block data has been tampered with
+    if (calculatedHash !== blockData.hash) {
+      toast.error("Block data has been tampered with! Cannot confirm.");
+      return;
+    }
+  
+    console.log("Rejecting block:", nodeIndex, block);
+  
+    try {
+      await axios.post(`${BASE_URL}/reject`, { clientId: storedClientId, data: { index: block } });
+  
+      // Update the tick state to show the block has been confirmed
+      setTicks((prevTicks) => {
+        const newTicks = [...prevTicks];
+        newTicks[nodeIndex] = true;
+        return newTicks;
+      });
+  
+      toast.success("Block Rejected!");
     } catch (error) {
       console.error('Error confirming block:', error);
       alert('Failed to confirm block');
@@ -272,32 +332,46 @@ function App() {
       alert('Failed to delete blockchain data');
     }
   };
-  
 
+  function refreshPage(){ 
+    window.location.reload(); 
+  }
+  
   return (
-    <div className="App">
-      <div className='flex space-x-4'>
-        <div>
+    <div className="">
+      <h1 className="text-2xl font-bold text-center my-4">Blockchain Demo</h1>
+      <div className='m-2 lg:m-4 flex flex-wrap'>
+        <div className='flex items-center w-full lg:w-1/3 mx-2 my-2'>
           <input
             type="text"
             value={newBlockData}
             onChange={(e) => setNewBlockData(e.target.value)}
             placeholder="Enter new block data"
-            className="p-2 border rounded mr-4 text-sm"
+            className="w-2/3 p-2 border rounded mr-2 lg:mr-4 text-sm"
           />
+          <div className='w-1/3 flex items-center'>
+            <button
+              onClick={addBlock}
+              className="text-center p-2 bg-blue-500 text-white rounded text-sm lg:text-base"
+            >
+              Add Block
+            </button>
+          </div>
+        </div>
+        <div className='flex flex-wrap items-center w-full lg:w-1/3 mx-2 my-2'>
           <button
-            onClick={addBlock}
-            className="p-2 bg-blue-500 text-white rounded mb-4"
+            onClick={refreshPage}
+            className="text-center p-2 bg-yellow-300 text-white rounded text-sm lg:text-base mr-2"
           >
-            Add Block
+            Restart My Node
+          </button>
+          <button
+            onClick={deleteBlockchain}
+            className="text-center p-2 bg-red-500 text-white rounded text-sm lg:text-base"
+          >
+            Restart Blockchain
           </button>
         </div>
-        <button
-          onClick={deleteBlockchain}
-          className="p-2 bg-red-500 text-white rounded mb-4"
-        >
-          Delete Node Data
-        </button>
 
       </div>
       <div>
@@ -310,6 +384,7 @@ function App() {
             rehashBlock={(blockIndex) => rehashBlock(nodeIndex, blockIndex)}
             confirmBlock={(blockIndex) => confirmBlock(nodeIndex, blockIndex)}
             nodeIndex={nodeIndex}
+            rejectBlock={(blockIndex) => rejectBlock(nodeIndex, blockIndex)}
             showTick={ticks[nodeIndex]} // Pass the tick state for the current node
           />
         ))}
