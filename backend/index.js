@@ -7,7 +7,7 @@ const cors = require('cors');
 const path = require('path');
 const app = express();
 
-const CONSENSUS_PERCENTAGE = 67; // 67% consensus required for block confirmation
+const CONSENSUS_PERCENTAGE = 66; // 67% consensus required for block confirmation
 
 let blockchainData = [];
 
@@ -23,7 +23,6 @@ const loadBlockchain = () => {
     blockchainData = JSON.parse(data);
   } else {
     blockchainData = [];
-    // saveBlockchain();
   }
 };
 
@@ -169,7 +168,7 @@ const hasConsensus = (blockIndex) => {
 };
 
 app.post('/blocks/tampered', (req, res) => {
-  const { clientId, blockIndex } = req.body;
+  const { clientId, data, blockIndex } = req.body;
 
   // Find the node and block to update
   const node = findNodeByClientId(clientId);
@@ -183,8 +182,12 @@ app.post('/blocks/tampered', (req, res) => {
     return res.status(404).json({ error: "Block not found" });
   }
 
-  // Mark the tampered block and all subsequent blocks as tampered
-  for (let i = blockIndex; i < node.blocks.length; i++) {
+  // Update the block data and mark it as tampered
+  block.data = data;
+  block.wasTampered = true;
+
+  // Mark all subsequent blocks as tampered
+  for (let i = blockIndex + 1; i < node.blocks.length; i++) {
     node.blocks[i].wasTampered = true;
   }
 
@@ -225,7 +228,7 @@ app.delete('/blocks', (req, res) => {
 });
 
 app.post('/confirm', (req, res) => {
-  const { clientId, data } = req.body; 
+  const { clientId, data } = req.body;
   if (!clientId || clientId.trim() === '') {
     return res.status(400).json({ error: "Client ID is required" });
   }
@@ -244,18 +247,44 @@ app.post('/confirm', (req, res) => {
     return res.status(404).json({ error: "Block not found" });
   }
 
-  // Update only this block's isConfirmed field
+  // Allow confirmation even if tampered, but still check for tampering
+  const recalculatedHash = calculateHash(block.index, block.data, block.previousHash);
+
+  if (block.hash !== recalculatedHash) {
+    console.warn("Block has been tampered with, but confirming it anyway based on client request.");
+  }
+
+  // Confirm the block
   block.isConfirmed = true;
 
-  // Save the updated blockchain to the file (which now contains the specific change for this client)
+  // Save the updated blockchain
   saveBlockchain();
 
-  // Broadcast the updated blockchain to all clients (they will receive the correct structure with the single block updated)
-  broadcastBlockchain();
+  // Check if the block has reached the consensus
+  if (hasConsensus(index)) {
+    // If the consensus is reached, update the rest of the nodes with this block's data
+    updateNodesWithConfirmedBlock(index, block);
+  }
 
-  // Respond with a success message
+  broadcastBlockchain();
   res.json({ message: `Block at index ${index} for clientId ${clientId} confirmed.` });
 });
+
+const updateNodesWithConfirmedBlock = (blockIndex, confirmedBlock) => {
+  blockchainData.forEach(node => {
+    const block = node.blocks.find(b => b.index === blockIndex);
+    if (block) {
+      // Update the block's data to match the confirmed block
+      block.data = confirmedBlock.data;
+      block.hash = confirmedBlock.hash;
+      block.isConfirmed = true;
+      block.wasTampered = false; // Reset tampering flag since it's now confirmed
+    }
+  });
+  saveBlockchain(); // Save the updated blockchain after the changes
+};
+
+
 
 app.post('/reject', (req, res) => {
   const { clientId, data } = req.body; 
@@ -280,10 +309,7 @@ app.post('/reject', (req, res) => {
   // Update only this block's isConfirmed field
   block.isRejected = true;
 
-  // Save the updated blockchain to the file (which now contains the specific change for this client)
   saveBlockchain();
-
-  // Broadcast the updated blockchain to all clients (they will receive the correct structure with the single block updated)
   broadcastBlockchain();
 
   // Respond with a success message
