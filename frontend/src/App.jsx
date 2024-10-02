@@ -189,6 +189,42 @@ function App() {
       alert('Failed to confirm block');
     }
   };
+
+  const rejectBlock = async (nodeIndex, block) => {
+    const storedClientId = localStorage.getItem('clientId');
+    
+    if (!storedClientId) {
+      console.error('Client ID is not available');
+      return;
+    }
+  
+    const blockData = nodes[nodeIndex].blocks[block]; // Retrieve the block to confirm
+    const calculatedHash = sha256(blockData.index + blockData.data + blockData.previousHash).toString();
+  
+    // Check if the block data has been tampered with
+    if (calculatedHash !== blockData.hash) {
+      toast.error("Block data has been tampered with! Cannot confirm.");
+      return;
+    }
+  
+    console.log("Rejecting block:", nodeIndex, block);
+  
+    try {
+      await axios.post(`${BASE_URL}/reject`, { clientId: storedClientId, data: { index: block } });
+  
+      // Update the tick state to show the block has been confirmed
+      setTicks((prevTicks) => {
+        const newTicks = [...prevTicks];
+        newTicks[nodeIndex] = true;
+        return newTicks;
+      });
+  
+      toast.success("Block Rejected!");
+    } catch (error) {
+      console.error('Error confirming block:', error);
+      alert('Failed to confirm block');
+    }
+  };
   
   
 
@@ -296,8 +332,11 @@ function App() {
       alert('Failed to delete blockchain data');
     }
   };
-  
 
+  function refreshPage(){ 
+    window.location.reload(); 
+  }
+  
   return (
     <div className="">
       <h1 className="text-2xl font-bold text-center my-4">Blockchain Demo</h1>
@@ -319,7 +358,13 @@ function App() {
             </button>
           </div>
         </div>
-        <div className='flex items-center w-full lg:w-1/3 mx-2 my-2'>
+        <div className='flex flex-wrap items-center w-full lg:w-1/3 mx-2 my-2'>
+          <button
+            onClick={refreshPage}
+            className="text-center p-2 bg-yellow-300 text-white rounded text-sm lg:text-base mr-2"
+          >
+            Restart My Node
+          </button>
           <button
             onClick={deleteBlockchain}
             className="text-center p-2 bg-red-500 text-white rounded text-sm lg:text-base"
@@ -339,6 +384,7 @@ function App() {
             rehashBlock={(blockIndex) => rehashBlock(nodeIndex, blockIndex)}
             confirmBlock={(blockIndex) => confirmBlock(nodeIndex, blockIndex)}
             nodeIndex={nodeIndex}
+            rejectBlock={(blockIndex) => rejectBlock(nodeIndex, blockIndex)}
             showTick={ticks[nodeIndex]} // Pass the tick state for the current node
           />
         ))}

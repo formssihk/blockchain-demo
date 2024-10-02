@@ -1,7 +1,16 @@
 /* eslint-disable react/prop-types */
 import sha256 from 'crypto-js/sha256';
 
-function Block({ block, index, updateBlock, rehashBlock, blocks, showTick, confirmBlock, clientId }) {
+function Block({ block, 
+  index, 
+  updateBlock, 
+  rehashBlock, 
+  blocks, 
+  showTick, 
+  confirmBlock, 
+  clientId,
+  rejectBlock 
+}) {
   const previousBlock = index === 0 ? null : blocks[index - 1];
   const storedClientId = localStorage.getItem('clientId');
 
@@ -35,10 +44,12 @@ function Block({ block, index, updateBlock, rehashBlock, blocks, showTick, confi
       baseClass += 'bg-red-200'; // Tampered block gets a red background
     } else if (isSubsequentBlocksInvalid) {
       baseClass += 'bg-red-100';
-    } else if (block.isValid !== true) {
+    } else if (block.isValid !== true ) {
       baseClass += 'bg-red-100';
-    } else if (block.isConfirmed === false) {
+    } else if (block.isConfirmed === false && block.isRejected === false) {
       baseClass += 'bg-green-100/10';
+    } else if (block.isRejected === true) {
+      baseClass += 'bg-orange-100';
     } else {
       baseClass += 'bg-green-100';
     }
@@ -52,14 +63,19 @@ function Block({ block, index, updateBlock, rehashBlock, blocks, showTick, confi
           <span className="text-red-500">✗</span>
         </div>
       );
-    } else if (block.isConfirmed === false) {
+    } else if (block.isConfirmed === false && block.isRejected === false) {
       return (
         <div className="absolute top-2 right-2">
           <span className="text-yellow-500">?</span>
         </div>
       );
-    } 
-    else {
+    } else if(block.isRejected === true) {
+      return (
+        <div className="absolute top-2 right-2">
+          <span className="text-orange-500">!</span>
+        </div>
+      );
+    } else {
       return (
         <div className="absolute top-2 right-2">
           <span className="text-green-500">✓</span>
@@ -106,13 +122,19 @@ function Block({ block, index, updateBlock, rehashBlock, blocks, showTick, confi
                 Rehash Block
               </button>
             </div>
-            {!block.isConfirmed && 
-              <div className='w-full lg:w-1/2 flex justify-center'>
+            {(!block.isConfirmed && !block.isRejected) && 
+              <div className='w-full flex-wrap flex justify-center'>
                 <button
                   onClick={() => confirmBlock(block)}
-                  className="w-full mx-1 lg:m-2 p-2 bg-green-500 text-white text-xs lg:text-sm rounded"
+                  className=" mx-1 lg:mx-2 lg:m-2 p-2 bg-green-500 text-white text-xs lg:text-sm rounded"
                 >
                   Confirm Block
+                </button>
+                <button
+                  onClick={() => rejectBlock(block)}
+                  className=" mx-1 lg:mx-2 lg:m-2 p-2 bg-red-500 text-white text-xs lg:text-sm rounded"
+                >
+                  Reject Block
                 </button>
               </div>
             }
