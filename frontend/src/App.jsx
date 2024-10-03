@@ -261,17 +261,17 @@ function App() {
       }
   
       // Notify the backend about the tampered block
-      try {
-        await axios.post(`${BASE_URL}/blocks/tampered`, {
-          clientId: nodes[nodeIndex].clientId,
-          data: data,
-          blockIndex: blockIndex
-        });
-        // toast.error("Block tampered! Other nodes are notified.");
-      } catch (error) {
-        console.error('Error notifying backend of tampering:', error);
-        toast.error("Error notifying backend of tampering.");
-      }
+      // try {
+      //   await axios.post(`${BASE_URL}/blocks/tampered`, {
+      //     clientId: nodes[nodeIndex].clientId,
+      //     data: data,
+      //     blockIndex: blockIndex
+      //   });
+      //   // toast.error("Block tampered! Other nodes are notified.");
+      // } catch (error) {
+      //   console.error('Error notifying backend of tampering:', error);
+      //   toast.error("Error notifying backend of tampering.");
+      // }
     } else {
       toast.success("Block updated successfully.");
     }

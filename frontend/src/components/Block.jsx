@@ -94,14 +94,14 @@ function Block({
       {block.isValid === false && <p className="text-red-500 mt-2">Block is invalid!</p>}
       {storedClientId === clientId && (
         <div className='w-full flex flex-wrap justify-center'>
-          <div className='w-full lg:w-1/2 flex justify-center'>
+          {/* <div className='w-full lg:w-1/2 flex justify-center'>
             <button
               onClick={rehashBlock}
               className="w-full m-1 lg:m-2 p-2 bg-orange-400 text-white text-xs lg:text-sm rounded"
             >
               Rehash Block
             </button>
-          </div>
+          </div> */}
           {!block.isConfirmed && !block.isRejected && (
             <div className='w-full flex-wrap flex justify-center'>
               <button
