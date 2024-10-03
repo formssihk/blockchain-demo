@@ -192,7 +192,7 @@ app.post('/blocks/tampered', (req, res) => {
 
   // Save the blockchain and broadcast the tampered status to all clients
   saveBlockchain();
-  broadcastBlockchain();
+  // broadcastBlockchain();
 
   res.json({ message: `Block at index ${blockIndex} and all subsequent blocks for clientId ${clientId} marked as tampered.` });
 });
